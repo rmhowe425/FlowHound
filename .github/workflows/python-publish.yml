@@ -51,9 +51,6 @@ jobs:
     needs:
       - release-build
 
-    # Only allow publishing from version tags.
-    if: startsWith(github.ref, 'refs/tags/v')
-
     # Required for PyPI Trusted Publishing / OIDC.
     # This permission is intentionally scoped only to the publishing job.
     permissions:
