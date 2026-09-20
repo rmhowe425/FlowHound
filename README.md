@@ -9,7 +9,7 @@ pip install .
 ```
 
 ## Development
-[Application Architecture Diagram](https://github.com/rmhowe425/FlowHound/blob/main/flowhound/images/architecuture.png)
+[Application Architecture Diagram](https://github.com/rmhowe425/FlowHound/blob/main/flowhound/images/architecture.png)
 
 ## Usage
 

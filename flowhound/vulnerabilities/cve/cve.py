@@ -1,4 +1,5 @@
 import importlib
+
 from flowhound.vulnerabilities.io.version_detection import convert_tuple_to_version
 
 
@@ -71,7 +72,7 @@ class CVE:
         try:
             module = importlib.import_module(self.exploit_module)
             exploit_class_inst = getattr(module, self.exploit_class)
-        except Exception as e:
-            raise RuntimeError(f"Error importing exploit module: {str(e)}")
+        except Exception as e:  # noqa: BLE001
+            raise RuntimeError(f"Error importing exploit module: {e!s}")
 
         return exploit_class_inst()

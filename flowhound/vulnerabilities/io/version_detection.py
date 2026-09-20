@@ -21,9 +21,9 @@ def convert_version_to_tuple(target_version: str) -> tuple[int, int, int]:
     '1.10.0' -> (1, 10, 0)
     """
     if not isinstance(target_version, str) or not target_version:
-        raise ValueError('`target_version` must be a non-empty string.')
-    elif target_version.count('.') != 2:
-        raise ValueError('`target_version` must take the form: `x.x.x`.')
+        raise ValueError("`target_version` must be a non-empty string.")
+    elif target_version.count(".") != 2:
+        raise ValueError("`target_version` must take the form: `x.x.x`.")
 
     major, minor, patch = target_version.split(".")
     return (int(major), int(minor), int(patch))
@@ -49,7 +49,9 @@ def convert_tuple_to_version(target_version: tuple) -> str:
         or len(target_version) != 3
         or not all(isinstance(v, int) for v in target_version)
     ):
-        raise ValueError("Invalid version tuple. `target_version` must be a (major, minor, patch) tuple of ints.")
+        raise ValueError(
+            "Invalid version tuple. `target_version` must be a (major, minor, patch) tuple of ints."
+        )
 
     major, minor, patch = target_version
     return f"{major}.{minor}.{patch}"
@@ -71,15 +73,15 @@ def get_target_version(base_url: str, proxies: dict[str, str] | None = None) -> 
     -------
     Langflow version string.
     """
-    endpoint = '/api/v1/version'
+    endpoint = "/api/v1/version"
 
     try:
         resp = get(base_url + endpoint, timeout=20, proxies=proxies)
         resp_json = resp.json()
-    except Exception as e:
-        raise RuntimeError(f"Error retrieving target Langflow version: {str(e)}")
+    except Exception as e:  # noqa: BLE001
+        raise RuntimeError(f"Error retrieving target Langflow version: {e!s}")
 
-    if resp.status_code != 200 or not resp_json.get('version'):
+    if resp.status_code != 200 or not resp_json.get("version"):
         raise RuntimeError("Unable to retrieve Langflow version.")
 
-    return resp_json['version']
+    return resp_json["version"]

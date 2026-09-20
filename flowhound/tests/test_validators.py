@@ -1,26 +1,25 @@
-import pytest
 import click
-from click.testing import CliRunner
-from flowhound.cli.validators import validate_url, validate_proxy, validate_cve
+import pytest
 
+from flowhound.cli.validators import validate_cve, validate_proxy, validate_url
 
 # ---------------------------------------------------------------------------
 # validate_url
 # ---------------------------------------------------------------------------
 
 validate_url_valid = [
-    'http://localhost:7860',
-    'https://example.com',
-    'http://192.168.1.10:8080',
-    'https://langflow.example.com/app',
+    "http://localhost:7860",
+    "https://example.com",
+    "http://192.168.1.10:8080",
+    "https://langflow.example.com/app",
 ]
 
 validate_url_invalid = [
-    'ftp://example.com',
-    'not-a-url',
-    '//example.com',
-    '',
-    'http://',
+    "ftp://example.com",
+    "not-a-url",
+    "//example.com",
+    "",
+    "http://",
 ]
 
 
@@ -41,14 +40,23 @@ def test_validate_url_invalid(value):
 # ---------------------------------------------------------------------------
 
 validate_proxy_valid = [
-    ('http://127.0.0.1:8080', {'http': 'http://127.0.0.1:8080', 'https': 'http://127.0.0.1:8080'}),
-    ('https://proxy.example.com:3128', {'http': 'https://proxy.example.com:3128', 'https': 'https://proxy.example.com:3128'}),
+    (
+        "http://127.0.0.1:8080",
+        {"http": "http://127.0.0.1:8080", "https": "http://127.0.0.1:8080"},
+    ),
+    (
+        "https://proxy.example.com:3128",
+        {
+            "http": "https://proxy.example.com:3128",
+            "https": "https://proxy.example.com:3128",
+        },
+    ),
 ]
 
 validate_proxy_invalid = [
-    'ftp://proxy.example.com',
-    'not-a-url',
-    'http://',
+    "ftp://proxy.example.com",
+    "not-a-url",
+    "http://",
 ]
 
 
@@ -74,15 +82,15 @@ def test_validate_proxy_invalid(value):
 # ---------------------------------------------------------------------------
 
 validate_cve_valid = [
-    ('CVE-2026-9198', 'cve-2026-9198'),
-    ('cve-2021-44228', 'cve-2021-44228'),
-    ('CVE-2023-1234567', 'cve-2023-1234567'),
+    ("CVE-2026-9198", "cve-2026-9198"),
+    ("cve-2021-44228", "cve-2021-44228"),
+    ("CVE-2023-1234567", "cve-2023-1234567"),
 ]
 
 validate_cve_invalid = [
-    'CVE-26-9198',
-    'NOTACVE-2026-9198',
-    'CVE-20261-9198',
+    "CVE-26-9198",
+    "NOTACVE-2026-9198",
+    "CVE-20261-9198",
 ]
 
 

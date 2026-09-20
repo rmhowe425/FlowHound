@@ -1,0 +1,103 @@
+minimum_pre_commit_version: 4.0.0
+
+default_stages:
+  - pre-commit
+  - pre-push
+
+repos:
+  # ============================================================
+  # Python linting and formatting
+  # ============================================================
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.6
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+
+      - id: ruff-format
+
+
+  # ============================================================
+  # Dead / unused Python code
+  # ============================================================
+  - repo: https://github.com/jendrikseipp/vulture
+    rev: v2.16
+    hooks:
+      - id: vulture
+        args: [flowhound, whitelist.py]
+
+
+  # ============================================================
+  # Spelling
+  # ============================================================
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.3
+    hooks:
+      - id: codespell
+        types_or:
+          - python
+          - markdown
+          - yaml
+          - toml
+
+
+  # ============================================================
+  # General repository checks
+  # ============================================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-case-conflict
+
+      - id: check-toml
+
+      - id: check-yaml
+
+      - id: end-of-file-fixer
+
+      - id: mixed-line-ending
+        args: [--fix=auto]
+
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+
+      - id: check-added-large-files
+
+
+  # ============================================================
+  # FlowHound-specific checks
+  # ============================================================
+  - repo: local
+    hooks:
+
+      # Enforce FlowHound's module architecture.
+      - id: architecture
+        name: Validate FlowHound architecture
+        entry: python scripts/validate_architecture.py
+        language: python
+        types: [python]
+        pass_filenames: false
+
+      # Prevent accidental debugger statements.
+      - id: no-debugger
+        name: Check for debugger statements
+        language: pygrep
+        entry: '(^|\s)(breakpoint\(\)|pdb\.set_trace\(\))'
+        types: [python]
+
+      # Keep application output centralized through Click.
+      - id: no-print
+        name: Check for print() usage
+        language: pygrep
+        entry: '\bprint\('
+        types: [python]
+        exclude: ^scripts/
+
+      # Type checking. Run manually because it is slower.
+      - id: pyright
+        name: Pyright
+        entry: pyright
+        language: system
+        pass_filenames: false
+        types: [python]
+        stages: [manual]
