@@ -1,5 +1,7 @@
 # FlowHound
 
+![FlowHound Logo](flowhound/images/logo.png)
+
 Automated exploitation platform for scanning and testing insecure [Langflow](https://github.com/langflow-ai/langflow) deployments.
 
 ## Installation
@@ -74,6 +76,10 @@ Detect the target Langflow version and list applicable CVEs without launching an
 ```bash
 flowhound sniff --url http://target.example.com:7860
 ```
+
+## Architecture
+
+![Software Architecture Diagram](flowhound/images/architecture.png)
 
 ## How it works
 
