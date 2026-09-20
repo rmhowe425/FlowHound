@@ -56,6 +56,9 @@ class CVE:
 
     @max_impacted_version.setter
     def max_impacted_version(self, version):
+        """
+        Sets the max impacted version for a given CVE
+        """
         if isinstance(version, (tuple, list)) and len(version) > 0:
             version = convert_tuple_to_version(target_version=tuple(version))
         if not isinstance(version, str) or not version:
