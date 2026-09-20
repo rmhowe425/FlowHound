@@ -4,6 +4,10 @@
 
 Automated exploitation platform for scanning and testing insecure [Langflow](https://github.com/langflow-ai/langflow) deployments.
 
+## Documentation
+
+Full documentation is available at **[flowhound.readthedocs.io](https://flowhound.readthedocs.io/)**.
+
 ## Installation
 
 ```bash
