@@ -29,10 +29,16 @@ class CVE:
 
     @property
     def min_impacted_version(self) -> str:
+        """
+        Retrieves the minimum impacted version for a given CVE
+        """
         return self._min_impacted_version
 
     @min_impacted_version.setter
     def min_impacted_version(self, version):
+        """
+        Sets the minimum impacted version for a given CVE
+        """
         if isinstance(version, (tuple, list)) and len(version) > 0:
             version = convert_tuple_to_version(target_version=tuple(version))
         if not isinstance(version, str) or not version:
