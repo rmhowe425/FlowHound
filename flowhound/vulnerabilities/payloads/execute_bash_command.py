@@ -2,7 +2,6 @@ from flowhound.vulnerabilities.payloads.base_payload_class import PayloadBaseCla
 
 
 class Payload(PayloadBaseClass):
-
     def __init__(self, cmd: str):
         self.payload = self.generate_payload(cmd=cmd)
 

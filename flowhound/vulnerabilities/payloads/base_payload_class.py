@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
-class PayloadBaseClass(ABC):
 
+class PayloadBaseClass(ABC):
     blocking: bool = False
     """
     Set to True for payloads that block indefinitely (e.g. reverse shells).
@@ -9,7 +9,7 @@ class PayloadBaseClass(ABC):
     """
 
     @abstractmethod
-    def generate_payload(self) -> str:
+    def generate_payload(self, *_args, **_kwargs) -> str:
         """
         Abstract method for generating a payload
         """

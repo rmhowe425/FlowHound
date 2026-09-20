@@ -1,12 +1,18 @@
 import json
 from pathlib import Path
+
 from flowhound.vulnerabilities.cve.cve import CVE
 from flowhound.vulnerabilities.io.version_detection import convert_version_to_tuple
 
 _REQUIRED_FIELDS = {
-    "cve_id", "cve_description", "cvss_severity",
-    "min_impacted_version", "max_impacted_version",
-    "exploit_module", "exploit_class", "auth_required",
+    "cve_id",
+    "cve_description",
+    "cvss_severity",
+    "min_impacted_version",
+    "max_impacted_version",
+    "exploit_module",
+    "exploit_class",
+    "auth_required",
 }
 
 
@@ -69,9 +75,13 @@ class Database:
         version_formatted = convert_version_to_tuple(target_version=target_version)
 
         results = [
-            record for record in self.records
+            record
+            for record in self.records
             if tuple(record["min_impacted_version"]) <= version_formatted
-            and (record["max_impacted_version"] is None or tuple(record["max_impacted_version"]) >= version_formatted)
+            and (
+                record["max_impacted_version"] is None
+                or tuple(record["max_impacted_version"]) >= version_formatted
+            )
             and (is_auth or not record["auth_required"])
         ]
 
@@ -93,5 +103,7 @@ class Database:
         """
         if not cve:
             return [CVE(**record) for record in self.records]
-        results = [record for record in self.records if record["cve_id"].lower() == cve.lower()]
+        results = [
+            record for record in self.records if record["cve_id"].lower() == cve.lower()
+        ]
         return [CVE(**record) for record in results]

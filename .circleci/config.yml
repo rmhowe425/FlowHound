@@ -1,52 +1,143 @@
-# This config was automatically generated from your source code
-# Stacks detected: deps:python:.
 version: 2.1
-orbs:
-  python: circleci/python@2
+
 jobs:
-  test-python:
-    # Install dependencies and run tests
+  source-check:
     docker:
-      - image: cimg/python:3.10-node
+      - image: cimg/python:3.13
+
     steps:
       - checkout
-      - python/install-packages
+
+      - run:
+          name: Install FlowHound
+          command: python -m pip install -e .
+
+      - run:
+          name: Verify source import
+          command: python -c "import flowhound; print('FlowHound imported successfully')"
+
+  test:
+    docker:
+      - image: cimg/python:3.13
+
+    steps:
+      - checkout
+
+      - run:
+          name: Install development dependencies
+          command: python -m pip install -e ".[dev]"
+
       - run:
           name: Run tests
           command: pytest --junitxml=junit.xml || ((($? == 5)) && echo 'Did not find any tests to run.')
+
       - store_test_results:
           path: junit.xml
-  deploy:
-    # This is an example deploy job, not actually used by the workflow
+
+  ruff:
     docker:
-      - image: cimg/base:stable
+      - image: cimg/python:3.13
+
     steps:
+      - checkout
+
       - run:
-          name: Plan deployment
-          command: |-
-            circleci run release plan deploy \
-              --environment-name="default" \
-              --component-name="deploy" \
-              --target-version="1.0.${CIRCLE_BUILD_NUM}-${CIRCLE_SHA1:0:7}"
-      # Replace this with steps to deploy to users
+          name: Install Ruff
+          command: python -m pip install ruff
+
       - run:
-          name: deploy
-          command: '#e.g. ./deploy.sh'
+          name: Run Ruff lint
+          command: ruff check .
+
       - run:
-          name: Update deployment status to running
-          command: circleci run release update deploy --status=RUNNING
+          name: Check Ruff formatting
+          command: ruff format --check .
+
+  pyright:
+    docker:
+      - image: cimg/python:3.13
+
+    steps:
+      - checkout
+
       - run:
-          name: Update deployment status to success
-          command: circleci run release update deploy --status=SUCCESS
-          when: on_success
+          name: Install dependencies
+          command: python -m pip install -e ".[dev]"
+
       - run:
-          name: Update deployment status to failed
-          command: circleci run release update deploy --status=FAILED
-          when: on_fail
+          name: Run Pyright
+          command: pyright
+
+  build-wheel:
+    docker:
+      - image: cimg/python:3.13
+
+    steps:
+      - checkout
+
+      - run:
+          name: Install build tools
+          command: python -m pip install build
+
+      - run:
+          name: Build wheel
+          command: python -m build
+
+      - run:
+          name: Verify wheel was created
+          command: |
+            ls -lh dist/
+            test -n "$(find dist -name '*.whl' -print -quit)"
+
+      - persist_to_workspace:
+          root: .
+          paths:
+            - dist
+
+  install-wheel:
+    docker:
+      - image: cimg/python:3.13
+
+    steps:
+      - checkout
+
+      - attach_workspace:
+          at: .
+
+      - run:
+          name: Install wheel
+          command: python -m pip install dist/*.whl
+
+      - run:
+          name: Verify FlowHound installation
+          command: python -c "import flowhound; print(flowhound.__file__)"
+
+  cli-check:
+    docker:
+      - image: cimg/python:3.13
+
+    steps:
+      - checkout
+
+      - run:
+          name: Install FlowHound
+          command: python -m pip install -e .
+
+      - run:
+          name: Verify flowhound command
+          command: |
+            command -v flowhound
+            flowhound --help
+
 workflows:
   build-and-test:
     jobs:
-      - test-python
-    # - deploy:
-    #     requires:
-    #       - test-python
+      - source-check
+      - test
+      - ruff
+      - pyright
+      - build-wheel
+      - install-wheel:
+          requires:
+            - build-wheel
+      - cli-check

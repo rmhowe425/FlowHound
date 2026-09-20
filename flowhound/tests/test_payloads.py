@@ -1,17 +1,21 @@
 import pytest
-from flowhound.vulnerabilities.payloads.execute_bash_command import Payload as CommandPayload
-from flowhound.vulnerabilities.payloads.reverse_tcp_shell import Payload as ReverseTcpShellPayload
 
+from flowhound.vulnerabilities.payloads.execute_bash_command import (
+    Payload as CommandPayload,
+)
+from flowhound.vulnerabilities.payloads.reverse_tcp_shell import (
+    Payload as ReverseTcpShellPayload,
+)
 
 # ---------------------------------------------------------------------------
 # execute_bash_command.Payload
 # ---------------------------------------------------------------------------
 
 command_payload_cases = [
-    'id',
-    'whoami',
-    'cat /etc/passwd',
-    'ls -la /tmp',
+    "id",
+    "whoami",
+    "cat /etc/passwd",
+    "ls -la /tmp",
 ]
 
 
@@ -35,13 +39,13 @@ def test_command_payload_load_payload_returns_string(cmd):
 
 
 def test_command_payload_not_blocking():
-    p = CommandPayload(cmd='id')
+    p = CommandPayload(cmd="id")
     assert p.blocking is False
 
 
 def test_command_payload_generate_payload_contains_subprocess():
-    p = CommandPayload(cmd='whoami')
-    assert 'subprocess' in p.load_payload()
+    p = CommandPayload(cmd="whoami")
+    assert "subprocess" in p.load_payload()
 
 
 # ---------------------------------------------------------------------------
@@ -49,9 +53,9 @@ def test_command_payload_generate_payload_contains_subprocess():
 # ---------------------------------------------------------------------------
 
 reverse_shell_payload_cases = [
-    ('192.168.1.10', 4444),
-    ('10.0.0.1', 1337),
-    ('127.0.0.1', 9001),
+    ("192.168.1.10", 4444),
+    ("10.0.0.1", 1337),
+    ("127.0.0.1", 9001),
 ]
 
 
@@ -76,10 +80,10 @@ def test_reverse_shell_payload_load_payload_returns_string(lhost, lport):
 
 
 def test_reverse_shell_payload_is_blocking():
-    p = ReverseTcpShellPayload(lhost='192.168.1.10', lport=4444)
+    p = ReverseTcpShellPayload(lhost="192.168.1.10", lport=4444)
     assert p.blocking is True
 
 
 def test_reverse_shell_payload_contains_socket():
-    p = ReverseTcpShellPayload(lhost='192.168.1.10', lport=4444)
-    assert 'socket' in p.load_payload()
+    p = ReverseTcpShellPayload(lhost="192.168.1.10", lport=4444)
+    assert "socket" in p.load_payload()

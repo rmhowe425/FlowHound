@@ -31,6 +31,16 @@ dependencies = [
     "click==8.1.8",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pre-commit",
+    "ruff",
+    "vulture",
+    "codespell",
+    "pyright",
+]
+
 [project.urls]
 Homepage = "https://github.ibm.com/Richard-Howe/vuln_sleuth"
 

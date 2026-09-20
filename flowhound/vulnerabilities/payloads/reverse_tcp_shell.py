@@ -2,7 +2,6 @@ from flowhound.vulnerabilities.payloads.base_payload_class import PayloadBaseCla
 
 
 class Payload(PayloadBaseClass):
-
     blocking = True  # socket.connect + os.execv block; _popen_wrap needed
 
     def __init__(self, lhost: str, lport: int):

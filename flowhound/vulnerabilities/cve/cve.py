@@ -1,4 +1,5 @@
 import importlib
+
 from flowhound.vulnerabilities.io.version_detection import convert_tuple_to_version
 
 
@@ -29,10 +30,16 @@ class CVE:
 
     @property
     def min_impacted_version(self) -> str:
+        """
+        Retrieves the minimum impacted version for a given CVE
+        """
         return self._min_impacted_version
 
     @min_impacted_version.setter
     def min_impacted_version(self, version):
+        """
+        Sets the minimum impacted version for a given CVE
+        """
         if isinstance(version, (tuple, list)) and len(version) > 0:
             version = convert_tuple_to_version(target_version=tuple(version))
         if not isinstance(version, str) or not version:
@@ -43,10 +50,16 @@ class CVE:
 
     @property
     def max_impacted_version(self) -> str:
+        """
+        Retrieves the max impacted version for a given CVE
+        """
         return self._max_impacted_version
 
     @max_impacted_version.setter
     def max_impacted_version(self, version):
+        """
+        Sets the max impacted version for a given CVE
+        """
         if isinstance(version, (tuple, list)) and len(version) > 0:
             version = convert_tuple_to_version(target_version=tuple(version))
         if not isinstance(version, str) or not version:
@@ -59,7 +72,7 @@ class CVE:
         try:
             module = importlib.import_module(self.exploit_module)
             exploit_class_inst = getattr(module, self.exploit_class)
-        except Exception as e:
-            raise RuntimeError(f"Error importing exploit module: {str(e)}")
+        except Exception as e:  # noqa: BLE001
+            raise RuntimeError(f"Error importing exploit module: {e!s}")
 
         return exploit_class_inst()
