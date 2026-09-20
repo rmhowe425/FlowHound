@@ -1,0 +1,82 @@
+[
+    {
+        "cve_id": "CVE-2026-9198",
+        "cve_description": "Unauthenticated remote code execution in Langflow",
+        "cvss_severity": 10.0,
+        "min_impacted_version": [1, 0, 0],
+        "max_impacted_version": [1, 10, 0],
+        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_9198",
+        "exploit_class": "Exploit",
+        "auth_required": false
+    },
+    {
+        "cve_id": "CVE-2026-19295",
+        "cve_description": "Authenticated remote code execution in Langflow",
+        "cvss_severity": 9.9,
+        "min_impacted_version": [1, 0, 0],
+        "max_impacted_version": [1, 11, 1],
+        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_19295",
+        "exploit_class": "Exploit",
+        "auth_required": true
+    },
+    {
+        "cve_id": "CVE-2026-19286",
+        "cve_description": "Authenticated remote code execution in Langflow",
+        "cvss_severity": 9.8,
+        "min_impacted_version": [1, 11, 0],
+        "max_impacted_version": [1, 11, 1],
+        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_19286",
+        "exploit_class": "Exploit",
+        "auth_required": true
+    },
+    {
+        "cve_id": "CVE-2026-18729",
+        "cve_description": "Authenticated remote code execution in Langflow",
+        "cvss_severity": 8.8,
+        "min_impacted_version": [1, 0, 0],
+        "max_impacted_version": [1, 11, 1],
+        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_18729",
+        "exploit_class": "Exploit",
+        "auth_required": true
+    },
+    {
+        "cve_id": "CVE-2026-5027",
+        "cve_description": "Authenticated remote code execution in Langflow",
+        "cvss_severity": 8.8,
+        "min_impacted_version": [1, 0, 0],
+        "max_impacted_version": [1, 8, 4],
+        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_5027",
+        "exploit_class": "Exploit",
+        "auth_required": true
+    },
+    {
+        "cve_id": "CVE-2026-7873",
+        "cve_description": "Authenticated remote code execution in Langflow",
+        "cvss_severity": 8.8,
+        "min_impacted_version": [1, 0, 0],
+        "max_impacted_version": [1, 10, 0],
+        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_7873",
+        "exploit_class": "Exploit",
+        "auth_required": true
+    },
+    {
+        "cve_id": "CVE-2026-10134",
+        "cve_description": "Authenticated remote code execution in Langflow",
+        "cvss_severity": 8.8,
+        "min_impacted_version": [1, 0, 0],
+        "max_impacted_version": [1, 9, 3],
+        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_10134",
+        "exploit_class": "Exploit",
+        "auth_required": true
+    },
+    {
+        "cve_id": "CVE-2026-0768",
+        "cve_description": "Unauthenticated remote code execution in Langflow",
+        "cvss_severity": 9.8,
+        "min_impacted_version": [1, 4, 2],
+        "max_impacted_version": [1, 4, 2],
+        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_0768",
+        "exploit_class": "Exploit",
+        "auth_required": false
+    }
+]

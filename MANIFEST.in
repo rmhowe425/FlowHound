@@ -1,0 +1,2 @@
+include flowhound/config.env
+recursive-include flowhound/vulnerabilities/io *.db

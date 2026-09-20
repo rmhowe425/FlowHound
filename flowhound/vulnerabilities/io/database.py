@@ -1,7 +1,13 @@
 import json
 from pathlib import Path
 from flowhound.vulnerabilities.cve.cve import CVE
-from flowhound.vulnerabilities.io.version_detection import convert_version_to_int, convert_int_to_version
+from flowhound.vulnerabilities.io.version_detection import convert_version_to_tuple
+
+_REQUIRED_FIELDS = {
+    "cve_id", "cve_description", "cvss_severity",
+    "min_impacted_version", "max_impacted_version",
+    "exploit_module", "exploit_class", "auth_required",
+}
 
 
 class Database:
@@ -20,18 +26,28 @@ class Database:
         Returns
         -------
         list of dicts representing vulnerability records.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the JSON data store cannot be found.
+        ValueError
+            If any record is missing a required field.
         """
         if not self.db_path.exists():
             raise FileNotFoundError(f"[-] Data store not found: {self.db_path}")
 
         with open(self.db_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            records = json.load(f)
 
-    def close(self):
-        """
-        No-op: retained for API compatibility. JSON has no persistent connection.
-        """
-        self.records = None
+        for i, record in enumerate(records):
+            missing = _REQUIRED_FIELDS - record.keys()
+            if missing:
+                raise ValueError(
+                    f"Record at index {i} is missing required field(s): {', '.join(sorted(missing))}"
+                )
+
+        return records
 
     def retrieve_vulnerabilities(self, target_version: str, is_auth: bool):
         """
@@ -50,29 +66,16 @@ class Database:
         -------
         List of CVE objects returned based on `target_version`.
         """
-        version_formatted = convert_version_to_int(target_version=target_version)
+        version_formatted = convert_version_to_tuple(target_version=target_version)
 
         results = [
             record for record in self.records
-            if record["min_impacted_version"] <= version_formatted
-            and (record["max_impacted_version"] is None or record["max_impacted_version"] >= version_formatted)
-            and (is_auth or record["auth_required"] == 0)
+            if tuple(record["min_impacted_version"]) <= version_formatted
+            and (record["max_impacted_version"] is None or tuple(record["max_impacted_version"]) >= version_formatted)
+            and (is_auth or not record["auth_required"])
         ]
 
-        cve_instances = [CVE(**record) for record in results]
-
-        for cve in cve_instances:
-            min_version = cve.get_min_impacted_version()
-            max_version = cve.get_max_impacted_version()
-
-            cve.set_max_impacted_version(
-                version=convert_int_to_version(target_version=max_version)
-            )
-            cve.set_min_impacted_version(
-                version=convert_int_to_version(target_version=min_version)
-            )
-
-        return cve_instances
+        return [CVE(**record) for record in results]
 
     def search_vulnerabilities(self, cve: str) -> list:
         """
@@ -89,11 +92,6 @@ class Database:
         A list of CVE objects
         """
         if not cve:
-            results = self.records
-        else:
-            results = [
-                record for record in self.records
-                if record["cve_id"].lower() == cve.lower()
-            ]
-
+            return [CVE(**record) for record in self.records]
+        results = [record for record in self.records if record["cve_id"].lower() == cve.lower()]
         return [CVE(**record) for record in results]
