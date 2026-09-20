@@ -129,6 +129,21 @@ jobs:
             command -v flowhound
             flowhound --help
 
+  docs-build:
+    docker:
+      - image: cimg/python:3.13
+
+    steps:
+      - checkout
+
+      - run:
+          name: Install documentation dependencies
+          command: python -m pip install -e ".[docs]"
+
+      - run:
+          name: Build documentation
+          command: mkdocs build --strict
+
 workflows:
   build-and-test:
     jobs:
@@ -141,3 +156,4 @@ workflows:
           requires:
             - build-wheel
       - cli-check
+      - docs-build
