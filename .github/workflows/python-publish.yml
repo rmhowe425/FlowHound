@@ -44,10 +44,9 @@ jobs:
           if-no-files-found: error
 
   pypi-publish:
-    name: Test PyPI environment
+    name: Publish release to PyPI
     runs-on: ubuntu-latest
 
-    # Required for PyPI Trusted Publishing / OIDC.
     permissions:
       id-token: write
 
@@ -56,10 +55,13 @@ jobs:
       url: https://pypi.org/project/flowhound/
 
     steps:
-      - name: Verify PyPI environment
-        run: |
-          echo "PyPI publishing job started successfully."
-          echo "Event: ${{ github.event_name }}"
-          echo "Ref: ${{ github.ref }}"
-          echo "Ref name: ${{ github.ref_name }}"
-          echo "SHA: ${{ github.sha }}"
+      - name: Retrieve release distributions
+        uses: actions/download-artifact@v6
+        with:
+          name: release-dists
+          path: dist/
+
+      - name: Publish distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
