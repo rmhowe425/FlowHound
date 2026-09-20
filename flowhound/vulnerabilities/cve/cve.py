@@ -49,6 +49,9 @@ class CVE:
 
     @property
     def max_impacted_version(self) -> str:
+        """
+        Retrieves the max impacted version for a given CVE
+        """
         return self._max_impacted_version
 
     @max_impacted_version.setter
