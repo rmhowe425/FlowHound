@@ -18,7 +18,7 @@ jobs:
 
       - run:
           name: Run Pyright
-          command: pre-commit run pyright --all-files
+          command: pre-commit run pyright --all-files --hook-stage manual
 
       - run:
           name: Run tests
