@@ -1,7 +1,59 @@
 version: 2.1
 
 jobs:
-  test-python:
+  source-check:
+    docker:
+      - image: cimg/python:3.13
+
+    steps:
+      - checkout
+
+      - run:
+          name: Install FlowHound
+          command: python -m pip install -e .
+
+      - run:
+          name: Verify source import
+          command: python -c "import flowhound; print('FlowHound imported successfully')"
+
+  test:
+    docker:
+      - image: cimg/python:3.13
+
+    steps:
+      - checkout
+
+      - run:
+          name: Install development dependencies
+          command: python -m pip install -e ".[dev]"
+
+      - run:
+          name: Run tests
+          command: pytest --junitxml=junit.xml || ((($? == 5)) && echo 'Did not find any tests to run.')
+
+      - store_test_results:
+          path: junit.xml
+
+  ruff:
+    docker:
+      - image: cimg/python:3.13
+
+    steps:
+      - checkout
+
+      - run:
+          name: Install Ruff
+          command: python -m pip install ruff
+
+      - run:
+          name: Run Ruff lint
+          command: ruff check .
+
+      - run:
+          name: Check Ruff formatting
+          command: ruff format --check .
+
+  pyright:
     docker:
       - image: cimg/python:3.13
 
@@ -13,21 +65,79 @@ jobs:
           command: python -m pip install -e ".[dev]"
 
       - run:
-          name: Run pre-commit checks
-          command: pre-commit run --all-files
-
-      - run:
           name: Run Pyright
-          command: pre-commit run pyright --all-files --hook-stage manual
+          command: pyright
+
+  build-wheel:
+    docker:
+      - image: cimg/python:3.13
+
+    steps:
+      - checkout
 
       - run:
-          name: Run tests
-          command: pytest --junitxml=junit.xml || ((($? == 5)) && echo 'Did not find any tests to run.')
+          name: Install build tools
+          command: python -m pip install build
 
-      - store_test_results:
-          path: junit.xml
+      - run:
+          name: Build wheel
+          command: python -m build
+
+      - run:
+          name: Verify wheel was created
+          command: |
+            ls -lh dist/
+            test -n "$(find dist -name '*.whl' -print -quit)"
+
+      - persist_to_workspace:
+          root: .
+          paths:
+            - dist
+
+  install-wheel:
+    docker:
+      - image: cimg/python:3.13
+
+    steps:
+      - checkout
+
+      - attach_workspace:
+          at: .
+
+      - run:
+          name: Install wheel
+          command: python -m pip install dist/*.whl
+
+      - run:
+          name: Verify FlowHound installation
+          command: python -c "import flowhound; print(flowhound.__file__)"
+
+  cli-check:
+    docker:
+      - image: cimg/python:3.13
+
+    steps:
+      - checkout
+
+      - run:
+          name: Install FlowHound
+          command: python -m pip install -e .
+
+      - run:
+          name: Verify flowhound command
+          command: |
+            command -v flowhound
+            flowhound --help
 
 workflows:
   build-and-test:
     jobs:
-      - test-python
+      - source-check
+      - test
+      - ruff
+      - pyright
+      - build-wheel
+      - install-wheel:
+          requires:
+            - build-wheel
+      - cli-check
