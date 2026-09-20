@@ -1,11 +1,9 @@
 name: Upload Python Package
 
 on:
-  release:
-    types:
-      - published
-
-  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
 
 # Default permissions are intentionally minimal.
 permissions:
@@ -39,7 +37,7 @@ jobs:
           python -m twine check dist/*
 
       - name: Upload release distributions
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: release-dists
           path: dist/
