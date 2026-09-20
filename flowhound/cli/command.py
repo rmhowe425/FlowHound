@@ -194,7 +194,7 @@ def attack(
     callback=validate_proxy,
 )
 @click.pass_context
-def sniff(ctx: click.Context, url: str, proxy: str):
+def sniff(ctx: click.Context, url: str, proxy: dict[str, str] | None):
     db: Database = ctx.obj
 
     # Determine victim langflow version

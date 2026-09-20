@@ -9,7 +9,7 @@ class PayloadBaseClass(ABC):
     """
 
     @abstractmethod
-    def generate_payload(self) -> str:
+    def generate_payload(self, *_args, **_kwargs) -> str:
         """
         Abstract method for generating a payload
         """

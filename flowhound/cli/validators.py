@@ -16,7 +16,7 @@ def validate_url(ctx, param, value) -> str:
     return value
 
 
-def validate_proxy(ctx, param, value) -> dict:
+def validate_proxy(ctx, param, value) -> dict | None:
     if value is None:
         return value
 
