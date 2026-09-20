@@ -40,9 +40,13 @@ dev = [
     "codespell",
     "pyright",
 ]
+docs = [
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.6.14",
+]
 
 [project.urls]
-Homepage = "https://github.ibm.com/Richard-Howe/vuln_sleuth"
+Homepage = "https://github.com/rmhowe425/FlowHound"
 
 [project.scripts]
 flowhound = "flowhound.__main__:main"

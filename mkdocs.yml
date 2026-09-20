@@ -1,0 +1,65 @@
+site_name: FlowHound
+site_description: Automated exploitation platform for scanning and testing insecure Langflow deployments.
+site_author: Richard Howe
+site_url: https://flowhound.readthedocs.io/
+
+repo_name: rmhowe425/FlowHound
+repo_url: https://github.com/rmhowe425/FlowHound
+
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: deep orange
+      accent: orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: deep orange
+      accent: orange
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: installation.md
+      - Quick Start: quickstart.md
+  - Usage:
+      - CLI Overview: usage.md
+      - Attack: attack.md
+      - Sniff: sniff.md
+  - Vulnerabilities:
+      - Vulnerability Database: vulnerabilities.md
+  - Developer Guide:
+      - Architecture: architecture.md
+      - Development Setup: development.md
+      - Contributing: contributing.md
