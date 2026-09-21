@@ -112,6 +112,20 @@ jobs:
           name: Verify FlowHound installation
           command: python -c "import flowhound; print(flowhound.__file__)"
 
+  verify-wheel-contents:
+    docker:
+      - image: cimg/python:3.13
+
+    steps:
+      - attach_workspace:
+          at: .
+
+      - run:
+          name: Assert vulnerabilities.json is present in wheel
+          command: |
+            unzip -l dist/*.whl | grep -q "vulnerabilities/io/vulnerabilities.json"
+            echo "vulnerabilities.json confirmed in wheel"
+
   cli-check:
     docker:
       - image: cimg/python:3.13
@@ -153,6 +167,9 @@ workflows:
       - pyright
       - build-wheel
       - install-wheel:
+          requires:
+            - build-wheel
+      - verify-wheel-contents:
           requires:
             - build-wheel
       - cli-check
