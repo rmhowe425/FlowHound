@@ -169,5 +169,8 @@ workflows:
       - install-wheel:
           requires:
             - build-wheel
+      - verify-wheel-contents:
+          requires:
+            - build-wheel
       - cli-check
       - docs-build
