@@ -55,4 +55,4 @@ flowhound = "flowhound.__main__:main"
 where = ["."]
 
 [tool.setuptools.package-data]
-"flowhound" = ["config.env"]
+"flowhound" = ["config.env", "vulnerabilities/io/*.json"]
