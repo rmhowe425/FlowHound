@@ -159,3 +159,62 @@ def test_get_exploit_instance_bad_module_raises_runtime_error():
     cve_inst = CVE(**cve_dict)
     with pytest.raises(RuntimeError, match="Error importing exploit module"):
         cve_inst.get_exploit_instance()
+
+
+# ===========================================================================
+# CVE.min/max_impacted_version — tuple and list setter branches
+# ===========================================================================
+
+_CVE_TUPLE_BASE = {
+    "application": "langflow",
+    "cve_id": "CVE-2026-9198",
+    "cve_description": "Test CVE",
+    "cvss_severity": 7.5,
+    "min_impacted_version": "1.0.0",
+    "max_impacted_version": "1.10.0",
+    "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_9198",
+    "exploit_class": "Exploit",
+    "auth_required": False,
+}
+
+
+class TestVersionSetterTupleBranch:
+    def test_min_version_accepts_tuple(self):
+        cve = CVE(**_CVE_TUPLE_BASE)
+        cve.min_impacted_version = (2, 0, 0)
+        assert cve.min_impacted_version == "2.0.0"
+
+    def test_min_version_accepts_list(self):
+        cve = CVE(**_CVE_TUPLE_BASE)
+        cve.min_impacted_version = [3, 1, 4]
+        assert cve.min_impacted_version == "3.1.4"
+
+    def test_max_version_accepts_tuple(self):
+        cve = CVE(**_CVE_TUPLE_BASE)
+        cve.max_impacted_version = (9, 9, 9)
+        assert cve.max_impacted_version == "9.9.9"
+
+    def test_max_version_accepts_list(self):
+        cve = CVE(**_CVE_TUPLE_BASE)
+        cve.max_impacted_version = [0, 1, 2]
+        assert cve.max_impacted_version == "0.1.2"
+
+    def test_empty_list_raises_for_min(self):
+        cve = CVE(**_CVE_TUPLE_BASE)
+        with pytest.raises(ValueError, match="non-empty string"):
+            cve.min_impacted_version = []
+
+    def test_empty_list_raises_for_max(self):
+        cve = CVE(**_CVE_TUPLE_BASE)
+        with pytest.raises(ValueError, match="non-empty string"):
+            cve.max_impacted_version = []
+
+    def test_integer_raises(self):
+        cve = CVE(**_CVE_TUPLE_BASE)
+        with pytest.raises(ValueError):
+            cve.min_impacted_version = 100
+
+    def test_version_getters_return_correct_values(self):
+        cve = CVE(**_CVE_TUPLE_BASE)
+        assert cve.min_impacted_version == "1.0.0"
+        assert cve.max_impacted_version == "1.10.0"
