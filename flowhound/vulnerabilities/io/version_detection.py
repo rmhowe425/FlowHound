@@ -84,7 +84,7 @@ def get_langflow_target_version(
     try:
         resp = get(base_url + endpoint, timeout=20, proxies=proxies)
         resp_json = resp.json()
-    except RequestException as e:
+    except (RequestException, OSError) as e:
         raise RuntimeError(f"Error retrieving target Langflow version: {e!s}")
 
     if resp.status_code != 200 or not resp_json.get("version"):
@@ -118,7 +118,7 @@ def get_mlflow_target_version(
     try:
         resp = get(base_url + endpoint, timeout=20, proxies=proxies)
         version = resp.text
-    except RequestException as e:
+    except (RequestException, OSError) as e:
         raise RuntimeError(f"Error retrieving target MLflow version: {e}")
 
     if resp.status_code != 200 or not version or version.count(".") != 2:
