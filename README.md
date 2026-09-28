@@ -4,6 +4,11 @@
 
 Automated exploitation platform for scanning and testing insecure [Langflow](https://github.com/langflow-ai/langflow) and [MLflow](https://github.com/mlflow/mlflow) deployments.
 
+[![CI](https://dl.circleci.com/status-badge/img/gh/rmhowe425/FlowHound/tree/main.svg?style=shield)](https://dl.circleci.com/status-badge/redirect/gh/rmhowe425/FlowHound/tree/main)
+[![Coverage](https://codecov.io/gh/rmhowe425/FlowHound/branch/main/graph/badge.svg)](https://codecov.io/gh/rmhowe425/FlowHound)
+[![PyPI](https://img.shields.io/pypi/v/flowhound)](https://pypi.org/project/flowhound/)
+[![PyPI Downloads](https://img.shields.io/pypi/dm/flowhound)](https://pypi.org/project/flowhound/)
+
 ## Documentation
 
 Full documentation is available at **[flowhound.readthedocs.io](https://flowhound.readthedocs.io/)**.
