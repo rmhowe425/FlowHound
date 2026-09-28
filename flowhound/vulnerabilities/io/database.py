@@ -5,6 +5,7 @@ from flowhound.vulnerabilities.cve.cve import CVE
 from flowhound.vulnerabilities.io.version_detection import convert_version_to_tuple
 
 _REQUIRED_FIELDS = {
+    "application",
     "cve_id",
     "cve_description",
     "cvss_severity",
@@ -55,29 +56,34 @@ class Database:
 
         return records
 
-    def retrieve_vulnerabilities(self, target_version: str, is_auth: bool):
+    def retrieve_vulnerabilities(
+        self, application: str, target_version: str, is_auth: bool
+    ):
         """
-        Retrieve a list of CVEs impacting a given Langflow instance
-        based on the detected Langflow version number.
+        Retrieve a list of CVEs impacting a given application instance
+        based on the detected application name and version number.
 
         Parameters
         ----------
+        application : str
+            Target application name (e.g. "langflow", "mlflow").
         target_version : str
-            Target Langflow version number.
+            Target application version number.
         is_auth : bool
-            Represents whether Langflow credentials
+            Represents whether application credentials
             were supplied by the user.
 
         Returns
         -------
-        List of CVE objects returned based on `target_version`.
+        List of CVE objects returned based on `application` and `target_version`.
         """
         version_formatted = convert_version_to_tuple(target_version=target_version)
 
         results = [
             record
             for record in self.records
-            if tuple(record["min_impacted_version"]) <= version_formatted
+            if record["application"].lower() == application.lower()
+            and tuple(record["min_impacted_version"]) <= version_formatted
             and (
                 record["max_impacted_version"] is None
                 or tuple(record["max_impacted_version"]) >= version_formatted

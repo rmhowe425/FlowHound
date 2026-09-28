@@ -1,5 +1,6 @@
 [
     {
+        "application": "langflow",
         "cve_id": "CVE-2026-9198",
         "cve_description": "Unauthenticated remote code execution in Langflow",
         "cvss_severity": 10.0,
@@ -10,6 +11,7 @@
         "auth_required": false
     },
     {
+        "application": "langflow",
         "cve_id": "CVE-2026-19295",
         "cve_description": "Authenticated remote code execution in Langflow",
         "cvss_severity": 9.9,
@@ -20,6 +22,7 @@
         "auth_required": true
     },
     {
+        "application": "langflow",
         "cve_id": "CVE-2026-19286",
         "cve_description": "Authenticated remote code execution in Langflow",
         "cvss_severity": 9.8,
@@ -30,6 +33,7 @@
         "auth_required": true
     },
     {
+        "application": "langflow",
         "cve_id": "CVE-2026-18729",
         "cve_description": "Authenticated remote code execution in Langflow",
         "cvss_severity": 8.8,
@@ -40,6 +44,7 @@
         "auth_required": true
     },
     {
+        "application": "langflow",
         "cve_id": "CVE-2026-5027",
         "cve_description": "Authenticated remote code execution in Langflow",
         "cvss_severity": 8.8,
@@ -50,6 +55,7 @@
         "auth_required": true
     },
     {
+        "application": "langflow",
         "cve_id": "CVE-2026-7873",
         "cve_description": "Authenticated remote code execution in Langflow",
         "cvss_severity": 8.8,
@@ -60,6 +66,7 @@
         "auth_required": true
     },
     {
+        "application": "langflow",
         "cve_id": "CVE-2026-10134",
         "cve_description": "Authenticated remote code execution in Langflow",
         "cvss_severity": 8.8,
@@ -70,6 +77,7 @@
         "auth_required": true
     },
     {
+        "application": "langflow",
         "cve_id": "CVE-2026-0768",
         "cve_description": "Unauthenticated remote code execution in Langflow",
         "cvss_severity": 9.8,
