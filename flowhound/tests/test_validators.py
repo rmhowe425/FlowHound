@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import click
 import pytest
 
@@ -186,3 +188,32 @@ def test_validate_payload_args_invalid_port():
         validate_payload_args(None, "192.168.1.10:99999")
     with pytest.raises(click.BadParameter):
         validate_payload_args(None, "192.168.1.10:0")
+
+
+# ===========================================================================
+# urlparse exception branches (lines 12-13, 27-28)
+# ===========================================================================
+
+
+def test_validate_url_urlparse_exception_raises_bad_parameter():
+    """Lines 12-13: when urlparse itself raises, BadParameter is re-raised."""
+    with (
+        patch(
+            "flowhound.cli.validators.urlparse",
+            side_effect=ValueError("boom"),
+        ),
+        pytest.raises(click.BadParameter, match="Malformed URL"),
+    ):
+        validate_url(ctx=None, param=None, value="http://example.com")
+
+
+def test_validate_proxy_urlparse_exception_raises_bad_parameter():
+    """Lines 27-28: same for proxy."""
+    with (
+        patch(
+            "flowhound.cli.validators.urlparse",
+            side_effect=ValueError("boom"),
+        ),
+        pytest.raises(click.BadParameter, match="Malformed URL"),
+    ):
+        validate_proxy(ctx=None, param=None, value="http://127.0.0.1:8080")

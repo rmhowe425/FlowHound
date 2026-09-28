@@ -352,3 +352,234 @@ def test_sniff_invalid_application_exits():
     assert result.exit_code != 0
     assert "notaproduct" in result.output
     mock_detect.assert_not_called()
+
+
+# ===========================================================================
+# _execute_exploit, _get_vulnerabilities, timeout branch, --cve, sniff listing
+# ===========================================================================
+
+from concurrent.futures import TimeoutError as FutureTimeoutError
+
+from flowhound.cli.command import _execute_exploit, _get_vulnerabilities
+
+# --- _execute_exploit -------------------------------------------------------
+
+
+class TestExecuteExploit:
+    def test_returns_exploit_result(self):
+        exploit_module = MagicMock()
+        exploit_module.exploit.return_value = True
+        result = _execute_exploit(
+            exploit_module=exploit_module,
+            base_url="http://localhost:7860",
+            username="admin",
+            password="secret",
+            proxies=None,
+            payload=None,
+            timeout=10,
+        )
+        assert result is True
+
+    def test_exploit_false_result(self):
+        exploit_module = MagicMock()
+        exploit_module.exploit.return_value = False
+        result = _execute_exploit(
+            exploit_module=exploit_module,
+            base_url="http://localhost:7860",
+            username="",
+            password="",
+            proxies=None,
+            payload=None,
+        )
+        assert result is False
+
+    def test_passes_all_kwargs_to_exploit(self):
+        exploit_module = MagicMock()
+        exploit_module.exploit.return_value = True
+        payload = MagicMock()
+        _execute_exploit(
+            exploit_module=exploit_module,
+            base_url="http://localhost:7860",
+            username="u",
+            password="p",
+            proxies=None,
+            payload=payload,
+        )
+        exploit_module.exploit.assert_called_once_with(
+            base_url="http://localhost:7860",
+            username="u",
+            password="p",
+            proxies=None,
+            payload=payload,
+        )
+
+
+# --- _get_vulnerabilities ---------------------------------------------------
+
+
+class TestGetVulnerabilities:
+    def _make_db(self, vulns=None, search_vulns=None):
+        db = MagicMock(spec=Database)
+        db.retrieve_vulnerabilities.return_value = vulns or []
+        db.search_vulnerabilities.return_value = search_vulns or []
+        return db
+
+    def test_returns_cve_search_when_cve_provided(self):
+        db = self._make_db(search_vulns=["v"])
+        result = _get_vulnerabilities(
+            db=db,
+            application="langflow",
+            target_version="1.0.0",
+            is_auth=False,
+            cve="cve-2026-9198",
+        )
+        assert result == ["v"]
+        db.search_vulnerabilities.assert_called_once_with(cve="cve-2026-9198")
+
+    def test_returns_retrieve_when_no_cve(self):
+        db = self._make_db(vulns=["v1", "v2"])
+        result = _get_vulnerabilities(
+            db=db, application="langflow", target_version="1.0.0", is_auth=True
+        )
+        assert result == ["v1", "v2"]
+
+    def test_value_error_raises_click_exception(self):
+        db = self._make_db()
+        db.retrieve_vulnerabilities.side_effect = ValueError("bad")
+        with pytest.raises(click.ClickException, match="Error retrieving exploits"):
+            _get_vulnerabilities(
+                db=db, application="langflow", target_version="bad", is_auth=False
+            )
+
+    def test_runtime_error_raises_click_exception(self):
+        db = self._make_db()
+        db.retrieve_vulnerabilities.side_effect = RuntimeError("db error")
+        with pytest.raises(click.ClickException, match="Error retrieving exploits"):
+            _get_vulnerabilities(
+                db=db, application="langflow", target_version="1.0.0", is_auth=False
+            )
+
+
+# --- timeout branch ----------------------------------------------------------
+
+
+def test_exploit_timeout_continues_to_next():
+    runner = CliRunner()
+    mock_vuln = MagicMock()
+    mock_vuln.cve_id = "CVE-2026-9999"
+    mock_vuln.application = "langflow"
+    mock_vuln.min_impacted_version = "1.0.0"
+    mock_vuln.max_impacted_version = "2.0.0"
+
+    db = MagicMock(spec=Database)
+    db.retrieve_vulnerabilities.return_value = [mock_vuln]
+
+    with (
+        patch(
+            "flowhound.cli.command.detect_target", return_value=("langflow", "1.0.0")
+        ),
+        patch(
+            "flowhound.cli.command._execute_exploit",
+            side_effect=FutureTimeoutError(),
+        ),
+    ):
+        result = runner.invoke(attack, ["--url", "http://localhost:7860"], obj=db)
+    assert result.exit_code == 0
+
+
+# --- credentials-detected warning -------------------------------------------
+
+
+def test_credentials_detected_logs_warning():
+    runner = CliRunner()
+    db = MagicMock(spec=Database)
+    db.retrieve_vulnerabilities.return_value = []
+
+    with patch(
+        "flowhound.cli.command.detect_target", return_value=("langflow", "1.0.0")
+    ):
+        result = runner.invoke(
+            attack,
+            [
+                "--url",
+                "http://localhost:7860",
+                "--username",
+                "admin",
+                "--password",
+                "secret",
+            ],
+            obj=db,
+        )
+    assert result.exit_code == 0
+
+
+# --- --cve flag --------------------------------------------------------------
+
+
+def test_attack_cve_flag_calls_search_vulnerabilities():
+    runner = CliRunner()
+    db = MagicMock(spec=Database)
+    db.search_vulnerabilities.return_value = []
+
+    with patch(
+        "flowhound.cli.command.detect_target", return_value=("langflow", "1.0.0")
+    ):
+        result = runner.invoke(
+            attack,
+            ["--url", "http://localhost:7860", "--cve", "CVE-2026-9198"],
+            obj=db,
+        )
+    assert result.exit_code == 0
+    db.search_vulnerabilities.assert_called_once_with(cve="cve-2026-9198")
+
+
+def test_attack_invalid_cve_format_exits():
+    runner = CliRunner()
+    db = MagicMock(spec=Database)
+    result = runner.invoke(
+        attack,
+        ["--url", "http://localhost:7860", "--cve", "NOT-A-CVE"],
+        obj=db,
+    )
+    assert result.exit_code != 0
+
+
+def test_attack_get_vulnerabilities_error_exits():
+    runner = CliRunner()
+    db = MagicMock(spec=Database)
+    db.retrieve_vulnerabilities.side_effect = ValueError("bad data")
+
+    with patch(
+        "flowhound.cli.command.detect_target", return_value=("langflow", "1.0.0")
+    ):
+        result = runner.invoke(attack, ["--url", "http://localhost:7860"], obj=db)
+    assert result.exit_code != 0
+
+
+# --- sniff vuln listing (line 267) ------------------------------------------
+
+
+def test_sniff_lists_exploit_modules():
+    runner = CliRunner()
+    mock_vuln = MagicMock()
+    mock_vuln.exploit_module = "flowhound.vulnerabilities.exploits.cve_2026_9198"
+    db = MagicMock(spec=Database)
+    db.retrieve_vulnerabilities.return_value = [mock_vuln]
+
+    with patch(
+        "flowhound.cli.command.detect_target", return_value=("langflow", "1.0.0")
+    ):
+        result = runner.invoke(sniff, ["--url", "http://localhost:7860"], obj=db)
+    assert result.exit_code == 0
+
+
+def test_sniff_get_vulnerabilities_error_exits():
+    runner = CliRunner()
+    db = MagicMock(spec=Database)
+    db.retrieve_vulnerabilities.side_effect = RuntimeError("db error")
+
+    with patch(
+        "flowhound.cli.command.detect_target", return_value=("langflow", "1.0.0")
+    ):
+        result = runner.invoke(sniff, ["--url", "http://localhost:7860"], obj=db)
+    assert result.exit_code != 0

@@ -147,3 +147,45 @@ def test_output_banner_includes_message():
         output_banner("hello world")
 
     assert any("hello world" in c for c in captured)
+
+
+# ===========================================================================
+# emit — handleError branch (lines 46-47)
+# ===========================================================================
+
+
+def test_emit_calls_handle_error_on_exception():
+    """When format() raises, emit() must call self.handleError(record)."""
+    handler = ClickLogHandler()
+    record = logging.LogRecord(
+        name="test",
+        level=logging.INFO,
+        pathname="",
+        lineno=0,
+        msg="test",
+        args=(),
+        exc_info=None,
+    )
+    with (
+        patch.object(handler, "format", side_effect=RuntimeError("boom")),
+        patch.object(handler, "handleError") as mock_handle,
+    ):
+        handler.emit(record)
+    mock_handle.assert_called_once_with(record)
+
+
+def test_emit_exploit_logger_uses_green_fg():
+    """INFO from the exploit logger prefix → green colouring applied."""
+    handler = ClickLogHandler()
+    record = logging.LogRecord(
+        name="flowhound.vulnerabilities.exploits.cve_2026_9198",
+        level=logging.INFO,
+        pathname="",
+        lineno=0,
+        msg="attack ok",
+        args=(),
+        exc_info=None,
+    )
+    with patch("flowhound.cli.message_format.echo") as mock_echo:
+        handler.emit(record)
+    assert mock_echo.called
