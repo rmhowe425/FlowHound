@@ -5,7 +5,7 @@ from concurrent.futures import TimeoutError as FutureTimeoutError
 import click
 
 from flowhound.cli.banner import banner
-from flowhound.cli.validators import validate_proxy, validate_url
+from flowhound.cli.validators import validate_application, validate_proxy, validate_url
 from flowhound.vulnerabilities.io.database import Database
 from flowhound.vulnerabilities.io.version_detection import detect_target
 from flowhound.vulnerabilities.payloads import PAYLOAD_MAP
@@ -99,6 +99,7 @@ def _execute_exploit(
     required=False,
     default=None,
     help="Target application name (e.g. langflow, mlflow). Skips auto-detection when provided.",
+    callback=validate_application,
 )
 @click.pass_context
 def attack(
@@ -135,7 +136,7 @@ def attack(
         application, target_version = detect_target(
             base_url=url, proxies=proxies, application=application
         )
-    except (RuntimeError, ValueError) as e:
+    except RuntimeError as e:
         raise click.ClickException(f"Error detecting target: {e!s}")
 
     logger.info(f"Detected {application} version {target_version}.")
@@ -205,6 +206,7 @@ def attack(
     required=False,
     default=None,
     help="Target application name (e.g. langflow, mlflow). Skips auto-detection when provided.",
+    callback=validate_application,
 )
 @click.pass_context
 def sniff(
@@ -217,7 +219,7 @@ def sniff(
         application, target_version = detect_target(
             base_url=url, proxies=proxy, application=application
         )
-    except (RuntimeError, ValueError) as e:
+    except RuntimeError as e:
         raise click.ClickException(f"Error detecting target: {e!s}")
 
     logger.info(f"Detected {application} version {target_version}.")

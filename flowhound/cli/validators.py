@@ -3,6 +3,8 @@ from urllib.parse import urlparse
 
 import click
 
+from flowhound.vulnerabilities.io.version_detection import supported_applications
+
 
 def validate_url(ctx, param, value) -> str:
     try:
@@ -29,6 +31,21 @@ def validate_proxy(ctx, param, value) -> dict | None:
         raise click.BadParameter(f"Malformed URL: {value}")
 
     return {"http": value, "https": value}
+
+
+def validate_application(ctx, param, value) -> str | None:
+    if value is None:
+        return value
+
+    app_key = value.lower()
+    apps = supported_applications()
+    if app_key not in apps:
+        raise click.BadParameter(
+            f"Unsupported application {value!r}. "
+            f"Supported values: {', '.join(sorted(apps))}."
+        )
+
+    return app_key
 
 
 def validate_cve(ctx, param, value) -> str:

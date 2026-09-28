@@ -302,10 +302,7 @@ def test_attack_invalid_application_exits():
     runner = CliRunner()
     db = _make_db_with_vulns([])
 
-    with patch(
-        "flowhound.cli.command.detect_target",
-        side_effect=ValueError("Unrecognised application 'notaproduct'."),
-    ):
+    with patch("flowhound.cli.command.detect_target") as mock_detect:
         result = runner.invoke(
             attack,
             ["--url", "http://localhost:7860", "--application", "notaproduct"],
@@ -313,7 +310,8 @@ def test_attack_invalid_application_exits():
         )
 
     assert result.exit_code != 0
-    assert "Error detecting target" in result.output
+    assert "notaproduct" in result.output
+    mock_detect.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -344,10 +342,7 @@ def test_sniff_invalid_application_exits():
     runner = CliRunner()
     db = _make_db_with_vulns([])
 
-    with patch(
-        "flowhound.cli.command.detect_target",
-        side_effect=ValueError("Unrecognised application 'notaproduct'."),
-    ):
+    with patch("flowhound.cli.command.detect_target") as mock_detect:
         result = runner.invoke(
             sniff,
             ["--url", "http://localhost:7860", "--application", "notaproduct"],
@@ -355,4 +350,5 @@ def test_sniff_invalid_application_exits():
         )
 
     assert result.exit_code != 0
-    assert "Error detecting target" in result.output
+    assert "notaproduct" in result.output
+    mock_detect.assert_not_called()

@@ -281,8 +281,3 @@ def test_detect_target_application_is_case_insensitive():
 
     assert application == "langflow"
     assert version == "1.5.0"
-
-
-def test_detect_target_unknown_application_raises_value_error():
-    with pytest.raises(ValueError, match="Unrecognised application"):
-        detect_target(base_url="http://localhost:7860", application="notaproduct")

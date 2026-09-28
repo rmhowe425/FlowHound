@@ -133,6 +133,11 @@ _DETECTORS: dict[str, Callable] = {
 }
 
 
+def supported_applications() -> frozenset[str]:
+    """Return the set of canonical application names recognised by FlowHound."""
+    return frozenset(_DETECTORS)
+
+
 def detect_target(
     base_url: str,
     proxies: dict[str, str] | None = None,
@@ -163,18 +168,11 @@ def detect_target(
 
     Raises
     ------
-    ValueError
-        If ``application`` is supplied but is not a recognised product.
     RuntimeError
         If no supported product is detected at the target URL.
     """
     if application is not None:
         app_key = application.lower()
-        if app_key not in _DETECTORS:
-            raise ValueError(
-                f"Unrecognised application {application!r}. "
-                f"Supported values: {', '.join(sorted(_DETECTORS))}."
-            )
         version = _DETECTORS[app_key](base_url=base_url, proxies=proxies)
         return (app_key, version)
 
