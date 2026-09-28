@@ -1,8 +1,5 @@
 version: 2.1
 
-orbs:
-  codecov: codecov/codecov@5
-
 jobs:
   source-check:
     docker:
@@ -37,8 +34,12 @@ jobs:
       - store_test_results:
           path: junit.xml
 
-      - codecov/upload:
-          file: coverage.xml
+      - run:
+          name: Upload coverage to Codecov
+          command: |
+            curl -Os https://uploader.codecov.io/latest/linux/codecov
+            chmod +x codecov
+            ./codecov -t ${CODECOV_TOKEN} -f coverage.xml
 
   ruff:
     docker:
