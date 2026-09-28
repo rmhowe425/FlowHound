@@ -86,5 +86,38 @@
         "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_0768",
         "exploit_class": "Exploit",
         "auth_required": false
+    },
+    {
+        "application": "mlflow",
+        "cve_id": "CVE-2023-1177",
+        "cve_description": "Unauthenticated path traversal / arbitrary file read in MLflow via the artifact download endpoint",
+        "cvss_severity": 9.8,
+        "min_impacted_version": [1, 0, 0],
+        "max_impacted_version": [2, 2, 0],
+        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2023_1177",
+        "exploit_class": "Exploit",
+        "auth_required": false
+    },
+    {
+        "application": "mlflow",
+        "cve_id": "CVE-2024-27132",
+        "cve_description": "Authenticated SSRF via the MLflow artifact listing endpoint",
+        "cvss_severity": 8.8,
+        "min_impacted_version": [1, 0, 0],
+        "max_impacted_version": [2, 11, 2],
+        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2024_27132",
+        "exploit_class": "Exploit",
+        "auth_required": true
+    },
+    {
+        "application": "mlflow",
+        "cve_id": "CVE-2023-6977",
+        "cve_description": "Authenticated path traversal / arbitrary file read via the MLflow model registry artifact download endpoint",
+        "cvss_severity": 7.5,
+        "min_impacted_version": [1, 0, 0],
+        "max_impacted_version": [2, 9, 1],
+        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2023_6977",
+        "exploit_class": "Exploit",
+        "auth_required": true
     }
 ]

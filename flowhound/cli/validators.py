@@ -12,13 +12,13 @@ def validate_url(ctx, param, value) -> str:
     except Exception:  # noqa: BLE001
         raise click.BadParameter(f"Malformed URL: {value}")
 
-    if not result.scheme in ("http", "https") or not bool(result.netloc):
+    if result.scheme not in ("http", "https") or not bool(result.netloc):
         raise click.BadParameter(f"Malformed URL: {value}")
 
     return value
 
 
-def validate_proxy(ctx, param, value) -> dict | None:
+def validate_proxy(ctx, param, value) -> dict[str, str] | None:
     if value is None:
         return value
 
@@ -27,7 +27,7 @@ def validate_proxy(ctx, param, value) -> dict | None:
     except Exception:  # noqa: BLE001
         raise click.BadParameter(f"Malformed URL: {value}")
 
-    if not result.scheme in ("http", "https") or not bool(result.netloc):
+    if result.scheme not in ("http", "https") or not bool(result.netloc):
         raise click.BadParameter(f"Malformed URL: {value}")
 
     return {"http": value, "https": value}
@@ -48,9 +48,61 @@ def validate_application(ctx, param, value) -> str | None:
     return app_key
 
 
-def validate_cve(ctx, param, value) -> str:
+def validate_cve(ctx, param, value) -> str | None:
+    if value is None:
+        return None
+
     val_lowered = value.lower()
-    if value and not re.match("cve-\\d{4}-\\d{4,7}", val_lowered):
+    if not re.match(r"^cve-\d{4}-\d{4,7}$", val_lowered):
         raise click.BadParameter("Must provide a correctly formatted CVE code.")
 
     return val_lowered
+
+
+def validate_authentication(username: str | None, password: str | None) -> bool:
+    """Validate username and password pair.
+
+    Returns True if both are provided, False if neither is provided.
+    Raises click.BadParameter if only one is provided.
+    """
+    if username and password:
+        return True
+    if username or password:
+        raise click.BadParameter(
+            "`--username` and `--password` must be provided together."
+        )
+
+    return False
+
+
+def validate_payload_args(
+    cmd: str | None, reverse_shell: str | None
+) -> tuple[str, int] | None:
+    """Validate command and reverse_shell arguments.
+
+    Returns:
+        tuple[str, int]: (lhost, lport) if reverse_shell is valid.
+        None: if cmd is provided or neither is provided.
+
+    Raises:
+        click.UsageError: If both cmd and reverse_shell are provided.
+        click.BadParameter: If reverse_shell has invalid format or port range.
+    """
+    if cmd and reverse_shell:
+        raise click.UsageError("--command and --reverse_shell are mutually exclusive.")
+
+    if reverse_shell:
+        try:
+            lhost, lport_str = reverse_shell.rsplit(":", 1)
+            lport = int(lport_str)
+        except ValueError:
+            raise click.BadParameter(
+                "--reverse_shell must be formatted as LHOST:LPORT (e.g. 192.168.1.10:4444)."
+            )
+
+        if not (1 <= lport <= 65535):
+            raise click.BadParameter("Port must be between 1 and 65535.")
+
+        return lhost, lport
+
+    return None

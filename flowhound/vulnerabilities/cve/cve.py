@@ -78,9 +78,9 @@ class CVE:
         if isinstance(version, (tuple, list)) and len(version) > 0:
             version = convert_tuple_to_version(target_version=tuple(version))
         if not isinstance(version, str) or not version:
-            raise ValueError("`max_impacted_version` must be a non-empty string.")
+            raise ValueError("`version` must be a non-empty string.")
         elif version.count(".") != 2:
-            raise ValueError("`max_impacted_version` must take the form of `x.x.x`.")
+            raise ValueError("`version` must take the form of `x.x.x`.")
         self._max_impacted_version = version
 
     def get_exploit_instance(self):
