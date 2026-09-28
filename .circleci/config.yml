@@ -1,5 +1,8 @@
 version: 2.1
 
+orbs:
+  codecov: codecov/codecov@5
+
 jobs:
   source-check:
     docker:
@@ -29,10 +32,13 @@ jobs:
 
       - run:
           name: Run tests
-          command: pytest --junitxml=junit.xml || ((($? == 5)) && echo 'Did not find any tests to run.')
+          command: pytest --junitxml=junit.xml --cov=flowhound --cov-report=xml || ((($? == 5)) && echo 'Did not find any tests to run.')
 
       - store_test_results:
           path: junit.xml
+
+      - codecov/upload:
+          file: coverage.xml
 
   ruff:
     docker:
