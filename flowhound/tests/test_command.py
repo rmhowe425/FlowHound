@@ -75,7 +75,9 @@ def test_attack_username_without_password_fails():
     runner = CliRunner()
     db = _make_db_with_vulns([])
 
-    with patch("flowhound.cli.command.get_target_version", return_value="1.0.0"):
+    with patch(
+        "flowhound.cli.command.detect_target", return_value=("langflow", "1.0.0")
+    ):
         result = runner.invoke(
             attack,
             [
@@ -94,7 +96,9 @@ def test_attack_command_and_reverse_shell_mutually_exclusive():
     runner = CliRunner()
     db = _make_db_with_vulns([])
 
-    with patch("flowhound.cli.command.get_target_version", return_value="1.0.0"):
+    with patch(
+        "flowhound.cli.command.detect_target", return_value=("langflow", "1.0.0")
+    ):
         result = runner.invoke(
             attack,
             [
@@ -111,12 +115,12 @@ def test_attack_command_and_reverse_shell_mutually_exclusive():
     assert result.exit_code != 0
 
 
-def test_attack_version_error_exits():
+def test_attack_detection_error_exits():
     runner = CliRunner()
     db = _make_db_with_vulns([])
 
     with patch(
-        "flowhound.cli.command.get_target_version",
+        "flowhound.cli.command.detect_target",
         side_effect=RuntimeError("unreachable"),
     ):
         result = runner.invoke(
@@ -129,14 +133,16 @@ def test_attack_version_error_exits():
         )
 
     assert result.exit_code != 0
-    assert "Error retrieving target Langflow version" in result.output
+    assert "Error detecting target" in result.output
 
 
 def test_attack_no_vulns_runs_without_error():
     runner = CliRunner()
     db = _make_db_with_vulns([])
 
-    with patch("flowhound.cli.command.get_target_version", return_value="1.0.0"):
+    with patch(
+        "flowhound.cli.command.detect_target", return_value=("langflow", "1.0.0")
+    ):
         result = runner.invoke(
             attack,
             [
@@ -163,7 +169,9 @@ def test_attack_stops_after_first_success_without_autopwn():
     db = _make_db_with_vulns([mock_vuln, mock_vuln])
 
     with (
-        patch("flowhound.cli.command.get_target_version", return_value="1.0.0"),
+        patch(
+            "flowhound.cli.command.detect_target", return_value=("langflow", "1.0.0")
+        ),
         patch("flowhound.cli.command._execute_exploit", return_value=True),
     ):
         result = runner.invoke(
@@ -195,7 +203,9 @@ def test_attack_continues_with_autopwn():
         return True
 
     with (
-        patch("flowhound.cli.command.get_target_version", return_value="1.0.0"),
+        patch(
+            "flowhound.cli.command.detect_target", return_value=("langflow", "1.0.0")
+        ),
         patch("flowhound.cli.command._execute_exploit", side_effect=fake_execute),
     ):
         result = runner.invoke(
@@ -223,12 +233,12 @@ def test_sniff_missing_url_fails():
     assert result.exit_code != 0
 
 
-def test_sniff_version_error_exits():
+def test_sniff_detection_error_exits():
     runner = CliRunner()
     db = _make_db_with_vulns([])
 
     with patch(
-        "flowhound.cli.command.get_target_version",
+        "flowhound.cli.command.detect_target",
         side_effect=RuntimeError("unreachable"),
     ):
         result = runner.invoke(
@@ -241,14 +251,16 @@ def test_sniff_version_error_exits():
         )
 
     assert result.exit_code != 0
-    assert "Error retrieving target Langflow version" in result.output
+    assert "Error detecting target" in result.output
 
 
 def test_sniff_success_runs_without_error():
     runner = CliRunner()
     db = _make_db_with_vulns([])
 
-    with patch("flowhound.cli.command.get_target_version", return_value="1.0.0"):
+    with patch(
+        "flowhound.cli.command.detect_target", return_value=("langflow", "1.0.0")
+    ):
         result = runner.invoke(
             sniff,
             [
@@ -260,3 +272,83 @@ def test_sniff_success_runs_without_error():
 
     assert result.exit_code == 0
     assert "Error" not in result.output
+
+
+# ---------------------------------------------------------------------------
+# --application flag (attack)
+# ---------------------------------------------------------------------------
+
+
+def test_attack_with_application_flag_passes_to_detect_target():
+    runner = CliRunner()
+    db = _make_db_with_vulns([])
+
+    with patch(
+        "flowhound.cli.command.detect_target", return_value=("mlflow", "3.1.0")
+    ) as mock_detect:
+        result = runner.invoke(
+            attack,
+            ["--url", "http://localhost:5000", "--application", "mlflow"],
+            obj=db,
+        )
+
+    assert result.exit_code == 0
+    mock_detect.assert_called_once_with(
+        base_url="http://localhost:5000", proxies=None, application="mlflow"
+    )
+
+
+def test_attack_invalid_application_exits():
+    runner = CliRunner()
+    db = _make_db_with_vulns([])
+
+    with patch("flowhound.cli.command.detect_target") as mock_detect:
+        result = runner.invoke(
+            attack,
+            ["--url", "http://localhost:7860", "--application", "notaproduct"],
+            obj=db,
+        )
+
+    assert result.exit_code != 0
+    assert "notaproduct" in result.output
+    mock_detect.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# --application flag (sniff)
+# ---------------------------------------------------------------------------
+
+
+def test_sniff_with_application_flag_passes_to_detect_target():
+    runner = CliRunner()
+    db = _make_db_with_vulns([])
+
+    with patch(
+        "flowhound.cli.command.detect_target", return_value=("mlflow", "3.1.0")
+    ) as mock_detect:
+        result = runner.invoke(
+            sniff,
+            ["--url", "http://localhost:5000", "--application", "mlflow"],
+            obj=db,
+        )
+
+    assert result.exit_code == 0
+    mock_detect.assert_called_once_with(
+        base_url="http://localhost:5000", proxies=None, application="mlflow"
+    )
+
+
+def test_sniff_invalid_application_exits():
+    runner = CliRunner()
+    db = _make_db_with_vulns([])
+
+    with patch("flowhound.cli.command.detect_target") as mock_detect:
+        result = runner.invoke(
+            sniff,
+            ["--url", "http://localhost:7860", "--application", "notaproduct"],
+            obj=db,
+        )
+
+    assert result.exit_code != 0
+    assert "notaproduct" in result.output
+    mock_detect.assert_not_called()

@@ -11,14 +11,6 @@ FlowHound is tested against Python 3.10, 3.11, 3.12, and 3.13.
 
 ## Standard installation
 
-Install FlowHound from the local source tree:
-
-```bash
-pip install .
-```
-
-Once the package is distributed on PyPI the command will be:
-
 ```bash
 pip install flowhound
 ```
@@ -68,8 +60,8 @@ Options:
   -h, --help  Show this message and exit.
 
 Commands:
-  attack  Launch one or more exploits against a Langflow instance.
-  sniff   Determine target Langflow version.
+  attack  Launch one or more exploits against a target instance.
+  sniff   Detect target application and list known exploits.
 ```
 
 Verify the package imports correctly:

@@ -2,9 +2,13 @@ import json
 from pathlib import Path
 
 from flowhound.vulnerabilities.cve.cve import CVE
-from flowhound.vulnerabilities.io.version_detection import convert_version_to_tuple
+from flowhound.vulnerabilities.io.version_detection import (
+    convert_tuple_to_version,
+    convert_version_to_tuple,
+)
 
 _REQUIRED_FIELDS = {
+    "application",
     "cve_id",
     "cve_description",
     "cvss_severity",
@@ -14,6 +18,8 @@ _REQUIRED_FIELDS = {
     "exploit_class",
     "auth_required",
 }
+
+_VERSION_FIELDS = ("min_impacted_version", "max_impacted_version")
 
 
 class Database:
@@ -52,36 +58,49 @@ class Database:
                 raise ValueError(
                     f"Record at index {i} is missing required field(s): {', '.join(sorted(missing))}"
                 )
+            for field in _VERSION_FIELDS:
+                value = record[field]
+                if value is None:
+                    raise ValueError(
+                        f"Record at index {i} has a null value for '{field}'. "
+                        "Both version bounds are required."
+                    )
+                if isinstance(value, list):
+                    record[field] = convert_tuple_to_version(tuple(value))
 
         return records
 
-    def retrieve_vulnerabilities(self, target_version: str, is_auth: bool):
+    def retrieve_vulnerabilities(
+        self, application: str, target_version: str, is_auth: bool
+    ):
         """
-        Retrieve a list of CVEs impacting a given Langflow instance
-        based on the detected Langflow version number.
+        Retrieve a list of CVEs impacting a given application instance
+        based on the detected application name and version number.
 
         Parameters
         ----------
+        application : str
+            Target application name (e.g. "langflow", "mlflow").
         target_version : str
-            Target Langflow version number.
+            Target application version number.
         is_auth : bool
-            Represents whether Langflow credentials
+            Represents whether application credentials
             were supplied by the user.
 
         Returns
         -------
-        List of CVE objects returned based on `target_version`.
+        List of CVE objects returned based on `application` and `target_version`.
         """
         version_formatted = convert_version_to_tuple(target_version=target_version)
 
         results = [
             record
             for record in self.records
-            if tuple(record["min_impacted_version"]) <= version_formatted
-            and (
-                record["max_impacted_version"] is None
-                or tuple(record["max_impacted_version"]) >= version_formatted
-            )
+            if record["application"].lower() == application.lower()
+            and convert_version_to_tuple(record["min_impacted_version"])
+            <= version_formatted
+            and convert_version_to_tuple(record["max_impacted_version"])
+            >= version_formatted
             and (is_auth or not record["auth_required"])
         ]
 

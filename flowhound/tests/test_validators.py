@@ -104,3 +104,85 @@ def test_validate_cve_valid(value, expected):
 def test_validate_cve_invalid(value):
     with pytest.raises(click.BadParameter):
         validate_cve(ctx=None, param=None, value=value)
+
+
+# ---------------------------------------------------------------------------
+# validate_authentication
+# ---------------------------------------------------------------------------
+
+
+def test_validate_authentication_both_present():
+    from flowhound.cli.validators import validate_authentication
+
+    assert validate_authentication("admin", "secret") is True
+
+
+def test_validate_authentication_neither_present():
+    from flowhound.cli.validators import validate_authentication
+
+    assert validate_authentication("", "") is False
+    assert validate_authentication(None, None) is False
+
+
+def test_validate_authentication_only_username_raises():
+    from flowhound.cli.validators import validate_authentication
+
+    with pytest.raises(click.BadParameter):
+        validate_authentication("admin", "")
+    with pytest.raises(click.BadParameter):
+        validate_authentication("admin", None)
+
+
+def test_validate_authentication_only_password_raises():
+    from flowhound.cli.validators import validate_authentication
+
+    with pytest.raises(click.BadParameter):
+        validate_authentication("", "secret")
+    with pytest.raises(click.BadParameter):
+        validate_authentication(None, "secret")
+
+
+# ---------------------------------------------------------------------------
+# validate_payload_args
+# ---------------------------------------------------------------------------
+
+
+def test_validate_payload_args_none():
+    from flowhound.cli.validators import validate_payload_args
+
+    assert validate_payload_args(None, None) is None
+
+
+def test_validate_payload_args_cmd():
+    from flowhound.cli.validators import validate_payload_args
+
+    assert validate_payload_args("id", None) is None
+
+
+def test_validate_payload_args_reverse_shell_valid():
+    from flowhound.cli.validators import validate_payload_args
+
+    assert validate_payload_args(None, "192.168.1.10:4444") == ("192.168.1.10", 4444)
+
+
+def test_validate_payload_args_mutually_exclusive():
+    from flowhound.cli.validators import validate_payload_args
+
+    with pytest.raises(click.UsageError):
+        validate_payload_args("id", "192.168.1.10:4444")
+
+
+def test_validate_payload_args_invalid_format():
+    from flowhound.cli.validators import validate_payload_args
+
+    with pytest.raises(click.BadParameter):
+        validate_payload_args(None, "invalid-format")
+
+
+def test_validate_payload_args_invalid_port():
+    from flowhound.cli.validators import validate_payload_args
+
+    with pytest.raises(click.BadParameter):
+        validate_payload_args(None, "192.168.1.10:99999")
+    with pytest.raises(click.BadParameter):
+        validate_payload_args(None, "192.168.1.10:0")

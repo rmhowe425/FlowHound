@@ -5,11 +5,12 @@ from flowhound.vulnerabilities.io.version_detection import convert_tuple_to_vers
 
 class CVE:
     """
-    Represents a known CVE impacting a given Langflow instance.
+    Represents a known CVE impacting a target application instance.
     """
 
     def __init__(
         self,
+        application: str,
         cve_id: str,
         cve_description: str,
         cvss_severity: float,
@@ -19,6 +20,7 @@ class CVE:
         exploit_class: str,
         auth_required: bool,
     ):
+        self.application = application
         self.cve_id = cve_id
         self.cve_description = cve_description
         self.cvss_severity = cvss_severity
@@ -27,6 +29,19 @@ class CVE:
         self.auth_required = auth_required
         self.min_impacted_version = min_impacted_version
         self.max_impacted_version = max_impacted_version
+
+    @property
+    def application(self) -> str:
+        """
+        Retrieves the application name of the target.
+        """
+        return self._application
+
+    @application.setter
+    def application(self, application):
+        if not isinstance(application, str) or not application:
+            raise ValueError("`application` must be a non-empty string.")
+        self._application = application
 
     @property
     def min_impacted_version(self) -> str:

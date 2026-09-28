@@ -3,9 +3,22 @@ import pytest
 from flowhound.vulnerabilities.cve.cve import CVE
 from flowhound.vulnerabilities.exploits.cve_2026_9198 import Exploit
 
+_CVE_BASE = {
+    "application": "langflow",
+    "cve_id": "CVE-2026-44221",
+    "cve_description": "this is a CVE",
+    "cvss_severity": 1.0,
+    "min_impacted_version": "1.0.0",
+    "max_impacted_version": "1.10.0",
+    "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_44221",
+    "exploit_class": "Exploit",
+    "auth_required": False,
+}
+
 cve_creation = [
     pytest.param(
         {
+            "application": "langflow",
             "cve_id": "CVE-2026-44221",
             "cve_description": "this is a CVE",
             "cvss_severity": 9.8,
@@ -19,6 +32,7 @@ cve_creation = [
     ),
     pytest.param(
         {
+            "application": "langflow",
             "cve_id": "CVE-2026-44221",
             "cve_description": "this is a CVE",
             "cvss_severity": 1.0,
@@ -50,6 +64,22 @@ def test_cve_creation(input):
     CVE(**input)
 
 
+def test_cve_accepts_any_non_empty_application():
+    """Removing CVE.apps allowlist means any non-empty string is now valid."""
+    cve = CVE(**{**_CVE_BASE, "application": "future_product"})
+    assert cve.application == "future_product"
+
+
+def test_cve_application_empty_string_still_raises():
+    with pytest.raises(ValueError, match="`application` must be a non-empty string."):
+        CVE(**{**_CVE_BASE, "application": ""})
+
+
+def test_cve_application_non_string_still_raises():
+    with pytest.raises(ValueError, match="`application` must be a non-empty string."):
+        CVE(**{**_CVE_BASE, "application": None})
+
+
 @pytest.mark.parametrize("input", cve_creation)
 def test_set_impacted_version_valid(input):
     cve_inst = CVE(**input)
@@ -59,6 +89,7 @@ def test_set_impacted_version_valid(input):
 @pytest.mark.parametrize("input, error, error_msg", set_impacted_version_invalid)
 def test_set_max_impacted_version_invalid(input, error, error_msg):
     cve_dict = {
+        "application": "langflow",
         "cve_id": "CVE-2026-44221",
         "cve_description": "this is a CVE",
         "cvss_severity": 1.0,
@@ -77,6 +108,7 @@ def test_set_max_impacted_version_invalid(input, error, error_msg):
 @pytest.mark.parametrize("input, error, error_msg", set_impacted_version_invalid)
 def test_set_min_impacted_version_invalid(input, error, error_msg):
     cve_dict = {
+        "application": "langflow",
         "cve_id": "CVE-2026-44221",
         "cve_description": "this is a CVE",
         "cvss_severity": 1.0,
@@ -94,6 +126,7 @@ def test_set_min_impacted_version_invalid(input, error, error_msg):
 
 def test_get_exploit_instance():
     cve_dict = {
+        "application": "langflow",
         "cve_id": "CVE-2026-44221",
         "cve_description": "this is a CVE",
         "cvss_severity": 1.0,
@@ -112,6 +145,7 @@ def test_get_exploit_instance():
 
 def test_get_exploit_instance_bad_module_raises_runtime_error():
     cve_dict = {
+        "application": "langflow",
         "cve_id": "CVE-2026-44221",
         "cve_description": "this is a CVE",
         "cvss_severity": 1.0,
