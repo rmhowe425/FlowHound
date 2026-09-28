@@ -6,11 +6,12 @@ import click
 
 from flowhound.cli.banner import banner
 from flowhound.cli.validators import validate_application, validate_proxy, validate_url
+from flowhound.vulnerabilities.exploits.base_exploit_class import ExploitBaseClass
 from flowhound.vulnerabilities.io.database import Database
 from flowhound.vulnerabilities.io.version_detection import detect_target
 from flowhound.vulnerabilities.payloads import PAYLOAD_MAP
 
-EXPLOIT_TIMEOUT = 20
+EXPLOIT_TIMEOUT = ExploitBaseClass.TIMEOUT
 logger = logging.getLogger(__name__)
 
 
@@ -108,7 +109,7 @@ def attack(
     username: str,
     password: str,
     autopwn: bool,
-    proxy: str,
+    proxy: dict[str, str] | None,
     cmd: str | None,
     reverse_shell: str | None,
     application: str | None,
@@ -126,7 +127,7 @@ def attack(
     elif username and password:
         has_credentials = True
 
-    proxies = {"http": proxy, "https": proxy} if proxy else None
+    proxies = proxy
 
     # Determine payload to use
     payload = _get_payload(cmd=cmd, reverse_shell=reverse_shell)

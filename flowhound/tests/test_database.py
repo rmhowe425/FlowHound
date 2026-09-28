@@ -83,6 +83,29 @@ def test_load_raises_value_error_on_missing_fields(tmp_path):
         db_inst._load()
 
 
+def test_load_raises_value_error_on_null_max_version(tmp_path):
+    null_max_record = [
+        {
+            "application": "langflow",
+            "cve_id": "CVE-2026-9999",
+            "cve_description": "Test CVE",
+            "cvss_severity": 9.0,
+            "min_impacted_version": [1, 0, 0],
+            "max_impacted_version": None,
+            "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_9999",
+            "exploit_class": "Exploit",
+            "auth_required": False,
+        }
+    ]
+    bad_json = tmp_path / "vulnerabilities.json"
+    bad_json.write_text(json.dumps(null_max_record), encoding="utf-8")
+
+    db_inst = Database()
+    db_inst.db_path = bad_json
+    with pytest.raises(ValueError, match="null value for 'max_impacted_version'"):
+        db_inst._load()
+
+
 def test_search_vulnerabilities_no_filter_returns_all():
     db_inst = Database()
     all_vulns = db_inst.search_vulnerabilities(cve="")

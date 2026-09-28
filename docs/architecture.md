@@ -15,14 +15,18 @@ flowhound/
 │   ├── banner.py                      # ASCII-art banner displayed on attack
 │   └── message_format.py             # Coloured logging handler (ClickLogHandler)
 └── vulnerabilities/
+    ├── clients/
+    │   ├── base.py                    # Abstract base TargetClient adapter
+    │   ├── langflow.py                # LangflowClient authentication & adapter
+    │   └── mlflow.py                  # MLflowClient authentication & adapter
     ├── cve/
     │   └── cve.py                     # CVE data model; dynamically loads exploit modules
     ├── io/
     │   ├── database.py                # Reads vulnerabilities.json; filters by version & auth
-    │   ├── version_detection.py       # Queries /api/v1/version; version string ↔ tuple helpers
+    │   ├── version_detection.py       # Queries version endpoints; version string ↔ tuple helpers
     │   └── vulnerabilities.json       # Bundled CVE data store
     ├── exploits/
-    │   ├── base_exploit_class.py      # Abstract base; auto_login / authenticate helpers
+    │   ├── base_exploit_class.py      # Abstract base for exploit modules
     │   └── cve_2026_*.py             # Individual exploit PoC modules
     └── payloads/
         ├── base_payload_class.py      # Abstract base; generate_payload / load_payload interface
