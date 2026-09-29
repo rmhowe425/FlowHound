@@ -63,6 +63,7 @@ def _execute_exploit(
 def _detect_or_fail(
     url: str, proxy: dict[str, str] | None, application: str | None
 ) -> tuple[str, str]:
+    logger.info(f"Detecting target application at {url}...")
     try:
         app, version = detect_target(
             base_url=url, proxies=proxy, application=application
