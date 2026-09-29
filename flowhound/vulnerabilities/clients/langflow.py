@@ -58,7 +58,6 @@ class LangflowClient(TargetClient):
             HTTP authentication header or None.
         """
         endpoint = "/api/v1/login"
-        headers = {"Content-Type": "application/json"}
 
         try:
             resp = post(
@@ -72,8 +71,7 @@ class LangflowClient(TargetClient):
             raise RuntimeError(f"Unable to authenticate with Langflow: {e!s}")
 
         if resp.status_code == 200:
-            headers["Authorization"] = f"Bearer {resp_json['access_token']}"
-            return headers
+            return {"Authorization": f"Bearer {resp_json['access_token']}"}
 
         self.logger.warning(
             f"Unable to authenticate, `{endpoint}` returned with {resp.status_code}"

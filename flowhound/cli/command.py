@@ -123,10 +123,20 @@ def _run_exploits(
                 payload=payload,
             )
         except FutureTimeoutError:
-            logger.warning(
-                f"Exploit for {vuln.cve_id} timed out after {EXPLOIT_TIMEOUT}s. Skipping."
-            )
-            result = False
+            if payload and payload.blocking:
+                # A blocking payload (e.g. reverse shell) keeps the exploit
+                # thread alive for the duration of the shell session. A timeout
+                # here means the payload is still running — treat it as success.
+                logger.info(
+                    f"Exploit for {vuln.cve_id} timed out — "
+                    "blocking payload is still executing. Check your listener."
+                )
+                result = True
+            else:
+                logger.warning(
+                    f"Exploit for {vuln.cve_id} timed out after {EXPLOIT_TIMEOUT}s. Skipping."
+                )
+                result = False
 
         if not autopwn and result:
             logger.info("Exploitation successful. Stopping at first attempt.")

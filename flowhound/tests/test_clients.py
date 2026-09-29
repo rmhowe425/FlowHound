@@ -88,7 +88,7 @@ def test_langflow_authenticate_success():
 
     assert headers is not None
     assert headers["Authorization"] == "Bearer user-token-xyz"
-    assert headers["Content-Type"] == "application/json"
+    assert "Content-Type" not in headers
 
 
 def test_langflow_authenticate_non_200_returns_none():

