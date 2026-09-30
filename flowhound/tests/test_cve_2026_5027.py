@@ -243,29 +243,39 @@ class TestNeedsShellWrap:
 
 class TestParseCommand:
     def test_simple_command_no_args(self):
-        cmd, args = Exploit._parse_command("id")
+        result = Exploit._parse_command("id")
+        assert result is not None
+        cmd, args = result
         assert cmd == "id"
         assert args == []
 
     def test_command_with_args(self):
-        cmd, args = Exploit._parse_command("bash -c 'id'")
+        result = Exploit._parse_command("bash -c 'id'")
+        assert result is not None
+        cmd, args = result
         assert cmd == "bash"
         assert args == ["-c", "id"]
 
     def test_python_dash_c_with_code(self):
         code = "import os; os.system('id')"
         shell_command = f"python3 -c {code!r}"
-        cmd, args = Exploit._parse_command(shell_command)
+        result = Exploit._parse_command(shell_command)
+        assert result is not None
+        cmd, args = result
         assert cmd == "python3"
         assert args == ["-c", code]
 
     def test_empty_string_returns_original(self):
-        cmd, args = Exploit._parse_command("")
+        result = Exploit._parse_command("")
+        assert result is not None
+        cmd, args = result
         assert cmd == ""
         assert args == []
 
     def test_multiword_no_quotes(self):
-        cmd, args = Exploit._parse_command("curl -s http://localhost")
+        result = Exploit._parse_command("curl -s http://localhost")
+        assert result is not None
+        cmd, args = result
         assert cmd == "curl"
         assert args == ["-s", "http://localhost"]
 
