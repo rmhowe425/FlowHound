@@ -218,3 +218,118 @@ class TestVersionSetterTupleBranch:
         cve = CVE(**_CVE_TUPLE_BASE)
         assert cve.min_impacted_version == "1.0.0"
         assert cve.max_impacted_version == "1.10.0"
+
+
+# ===========================================================================
+# Hypothesis — property-based tests
+# ===========================================================================
+
+from hypothesis import given, settings
+from hypothesis import strategies as st
+
+# Strategy for a valid semver string
+_version_component = st.integers(min_value=0, max_value=9999)
+_valid_version = st.builds(
+    lambda a, b, c: f"{a}.{b}.{c}",
+    _version_component,
+    _version_component,
+    _version_component,
+)
+
+_CVE_HYPOTHESIS_BASE = {
+    "application": "langflow",
+    "cve_id": "CVE-2026-44221",
+    "cve_description": "hypothesis test CVE",
+    "cvss_severity": 7.5,
+    "min_impacted_version": "1.0.0",
+    "max_impacted_version": "9.9.9",
+    "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_9198",
+    "exploit_class": "Exploit",
+    "auth_required": False,
+}
+
+
+# ---------------------------------------------------------------------------
+# Version setter: any valid "X.Y.Z" string is accepted
+# ---------------------------------------------------------------------------
+
+
+@given(version=_valid_version)
+def test_cve_min_version_setter_accepts_any_valid_semver(version):
+    """min_impacted_version setter accepts any well-formed X.Y.Z string."""
+    cve = CVE(**_CVE_HYPOTHESIS_BASE)
+    cve.min_impacted_version = version
+    assert cve.min_impacted_version == version
+
+
+@given(version=_valid_version)
+def test_cve_max_version_setter_accepts_any_valid_semver(version):
+    """max_impacted_version setter accepts any well-formed X.Y.Z string."""
+    cve = CVE(**_CVE_HYPOTHESIS_BASE)
+    cve.max_impacted_version = version
+    assert cve.max_impacted_version == version
+
+
+# ---------------------------------------------------------------------------
+# Version setter: tuple and list inputs are coerced to a string correctly
+# ---------------------------------------------------------------------------
+
+
+@given(
+    major=_version_component,
+    minor=_version_component,
+    patch=_version_component,
+)
+def test_cve_min_version_setter_coerces_tuple(major, minor, patch):
+    """min_impacted_version setter converts a (major, minor, patch) tuple to X.Y.Z."""
+    cve = CVE(**_CVE_HYPOTHESIS_BASE)
+    cve.min_impacted_version = (major, minor, patch)
+    assert cve.min_impacted_version == f"{major}.{minor}.{patch}"
+
+
+@given(
+    major=_version_component,
+    minor=_version_component,
+    patch=_version_component,
+)
+def test_cve_max_version_setter_coerces_list(major, minor, patch):
+    """max_impacted_version setter converts a [major, minor, patch] list to X.Y.Z."""
+    cve = CVE(**_CVE_HYPOTHESIS_BASE)
+    cve.max_impacted_version = [major, minor, patch]
+    assert cve.max_impacted_version == f"{major}.{minor}.{patch}"
+
+
+# ---------------------------------------------------------------------------
+# Version setter: non-semver strings always raise ValueError
+# ---------------------------------------------------------------------------
+
+
+@given(st.text().filter(lambda s: s.count(".") != 2 and len(s) > 0))
+@settings(max_examples=200)
+def test_cve_min_version_setter_rejects_non_semver(bad_version):
+    """min_impacted_version setter raises ValueError for any non-semver string."""
+    cve = CVE(**_CVE_HYPOTHESIS_BASE)
+    with pytest.raises(ValueError):
+        cve.min_impacted_version = bad_version
+
+
+@given(st.text().filter(lambda s: s.count(".") != 2 and len(s) > 0))
+@settings(max_examples=200)
+def test_cve_max_version_setter_rejects_non_semver(bad_version):
+    """max_impacted_version setter raises ValueError for any non-semver string."""
+    cve = CVE(**_CVE_HYPOTHESIS_BASE)
+    with pytest.raises(ValueError):
+        cve.max_impacted_version = bad_version
+
+
+# ---------------------------------------------------------------------------
+# application setter: any non-empty string is accepted; empty/non-str raises
+# ---------------------------------------------------------------------------
+
+
+@given(st.text(min_size=1))
+def test_cve_application_setter_accepts_any_non_empty_string(app_name):
+    """application setter accepts any non-empty string."""
+    cve = CVE(**_CVE_HYPOTHESIS_BASE)
+    cve.application = app_name
+    assert cve.application == app_name

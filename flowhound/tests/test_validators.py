@@ -217,3 +217,103 @@ def test_validate_proxy_urlparse_exception_raises_bad_parameter():
         pytest.raises(click.BadParameter, match="Malformed URL"),
     ):
         validate_proxy(ctx=None, param=None, value="http://127.0.0.1:8080")
+
+
+# ===========================================================================
+# Hypothesis — property-based tests
+# ===========================================================================
+
+from hypothesis import given, settings
+from hypothesis import strategies as st
+
+# ---------------------------------------------------------------------------
+# validate_cve: regex contract
+# ---------------------------------------------------------------------------
+
+# Strategy producing strings that must always match the CVE pattern
+_valid_cve_years = st.integers(min_value=1000, max_value=9999).map(str)
+_valid_cve_ids = st.integers(min_value=1000, max_value=9999999).map(str)
+
+
+@given(year=_valid_cve_years, cve_id=_valid_cve_ids)
+def test_validate_cve_accepts_all_valid_formats(year, cve_id):
+    """validate_cve accepts any CVE-YYYY-NNNNN... with a 4-digit year and 4-7 digit id."""
+    value = f"CVE-{year}-{cve_id}"
+    result = validate_cve(ctx=None, param=None, value=value)
+    assert result == value.lower()
+
+
+@given(year=_valid_cve_years, cve_id=_valid_cve_ids)
+def test_validate_cve_always_lowercases(year, cve_id):
+    """validate_cve always returns a lowercase string."""
+    value = f"CVE-{year}-{cve_id}"
+    result = validate_cve(ctx=None, param=None, value=value)
+    assert result == result.lower()
+
+
+@given(
+    st.text(min_size=1).filter(
+        lambda s: not __import__("re").match(r"^cve-\d{4}-\d{4,7}$", s.lower())
+    )
+)
+@settings(max_examples=300)
+def test_validate_cve_rejects_all_malformed_strings(value):
+    """validate_cve raises click.BadParameter for any string that doesn't match the pattern."""
+    with pytest.raises(click.BadParameter):
+        validate_cve(ctx=None, param=None, value=value)
+
+
+# ---------------------------------------------------------------------------
+# validate_url: never crashes; only raises click.BadParameter
+# ---------------------------------------------------------------------------
+
+
+@given(st.text())
+@settings(max_examples=300)
+def test_validate_url_never_raises_unexpected_exception(value):
+    """validate_url raises only click.BadParameter (or nothing) for any string input."""
+    try:
+        validate_url(ctx=None, param=None, value=value)
+    except click.BadParameter:
+        pass  # expected
+    except Exception as exc:
+        raise AssertionError(
+            f"validate_url raised unexpected {type(exc).__name__} for input {value!r}"
+        ) from exc
+
+
+# ---------------------------------------------------------------------------
+# validate_proxy: never crashes; only raises click.BadParameter
+# ---------------------------------------------------------------------------
+
+
+@given(st.text())
+@settings(max_examples=300)
+def test_validate_proxy_never_raises_unexpected_exception(value):
+    """validate_proxy raises only click.BadParameter (or nothing) for any string input."""
+    try:
+        validate_proxy(ctx=None, param=None, value=value)
+    except click.BadParameter:
+        pass  # expected
+    except Exception as exc:
+        raise AssertionError(
+            f"validate_proxy raised unexpected {type(exc).__name__} for input {value!r}"
+        ) from exc
+
+
+# ---------------------------------------------------------------------------
+# validate_proxy: valid http/https URLs always return a two-key dict
+# ---------------------------------------------------------------------------
+
+_valid_hosts = st.from_regex(r"[a-z0-9]{1,20}\.[a-z]{2,4}", fullmatch=True)
+_valid_ports = st.integers(min_value=1, max_value=65535).map(str)
+
+
+@given(scheme=st.sampled_from(["http", "https"]), host=_valid_hosts, port=_valid_ports)
+def test_validate_proxy_valid_url_returns_dict(scheme, host, port):
+    """validate_proxy returns {'http': url, 'https': url} for any valid http/https URL."""
+    url = f"{scheme}://{host}:{port}"
+    result = validate_proxy(ctx=None, param=None, value=url)
+    assert isinstance(result, dict)
+    assert result["http"] == url
+    assert result["https"] == url

@@ -281,3 +281,110 @@ def test_detect_target_application_is_case_insensitive():
 
     assert application == "langflow"
     assert version == "1.5.0"
+
+
+# ===========================================================================
+# Hypothesis — property-based tests
+# ===========================================================================
+
+from hypothesis import given, settings
+from hypothesis import strategies as st
+
+# ---------------------------------------------------------------------------
+# Round-trip: tuple → string → tuple must be identity
+# ---------------------------------------------------------------------------
+
+_version_component = st.integers(min_value=0, max_value=9999)
+
+
+@given(major=_version_component, minor=_version_component, patch=_version_component)
+def test_version_round_trip_tuple_to_str_to_tuple(major, minor, patch):
+    """convert_tuple_to_version followed by convert_version_to_tuple is identity."""
+    tup = (major, minor, patch)
+    assert convert_version_to_tuple(convert_tuple_to_version(tup)) == tup
+
+
+@given(major=_version_component, minor=_version_component, patch=_version_component)
+def test_version_round_trip_str_to_tuple_to_str(major, minor, patch):
+    """convert_version_to_tuple followed by convert_tuple_to_version is identity."""
+    version_str = f"{major}.{minor}.{patch}"
+    assert (
+        convert_tuple_to_version(convert_version_to_tuple(version_str)) == version_str
+    )
+
+
+# ---------------------------------------------------------------------------
+# convert_version_to_tuple: valid inputs always produce 3-int tuples
+# ---------------------------------------------------------------------------
+
+
+@given(major=_version_component, minor=_version_component, patch=_version_component)
+def test_convert_version_to_tuple_output_shape(major, minor, patch):
+    """Any well-formed semver string produces a 3-element all-int tuple."""
+    result = convert_version_to_tuple(f"{major}.{minor}.{patch}")
+    assert isinstance(result, tuple)
+    assert len(result) == 3
+    assert all(isinstance(v, int) for v in result)
+
+
+@given(major=_version_component, minor=_version_component, patch=_version_component)
+def test_convert_version_to_tuple_values_match(major, minor, patch):
+    """The parsed integers match the original components exactly."""
+    result = convert_version_to_tuple(f"{major}.{minor}.{patch}")
+    assert result == (major, minor, patch)
+
+
+# ---------------------------------------------------------------------------
+# convert_version_to_tuple: invalid inputs always raise ValueError
+# ---------------------------------------------------------------------------
+
+
+@given(st.text().filter(lambda s: s.count(".") != 2 and s != ""))
+@settings(max_examples=200)
+def test_convert_version_to_tuple_non_semver_raises(value):
+    """Any non-empty string that does not contain exactly 2 dots raises ValueError."""
+    import pytest as _pytest
+
+    with _pytest.raises(ValueError):
+        convert_version_to_tuple(value)
+
+
+# ---------------------------------------------------------------------------
+# convert_tuple_to_version: valid inputs always produce "X.Y.Z" strings
+# ---------------------------------------------------------------------------
+
+
+@given(major=_version_component, minor=_version_component, patch=_version_component)
+def test_convert_tuple_to_version_output_format(major, minor, patch):
+    """Output is always a string of the form 'X.Y.Z'."""
+    result = convert_tuple_to_version((major, minor, patch))
+    assert isinstance(result, str)
+    assert result.count(".") == 2
+    parts = result.split(".")
+    assert len(parts) == 3
+    assert all(p.isdigit() for p in parts)
+
+
+# ---------------------------------------------------------------------------
+# convert_tuple_to_version: non-3-int-tuples always raise ValueError
+# ---------------------------------------------------------------------------
+
+
+@given(
+    st.one_of(
+        st.integers(),
+        st.text(),
+        st.none(),
+        st.tuples(st.integers(), st.integers()),  # 2-element
+        st.tuples(
+            st.integers(), st.integers(), st.integers(), st.integers()
+        ),  # 4-element
+        st.tuples(st.text(), st.text(), st.text()),  # wrong element types
+    )
+)
+def test_convert_tuple_to_version_invalid_input_raises(value):
+    """Anything that is not a 3-int tuple raises ValueError."""
+    import pytest as _pytest
+
+    with _pytest.raises(ValueError):
+        convert_tuple_to_version(value)
