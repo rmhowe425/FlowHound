@@ -248,6 +248,7 @@ def test_validate_cve_always_lowercases(year, cve_id):
     """validate_cve always returns a lowercase string."""
     value = f"CVE-{year}-{cve_id}"
     result = validate_cve(ctx=None, param=None, value=value)
+    assert result is not None
     assert result == result.lower()
 
 
