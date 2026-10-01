@@ -131,3 +131,93 @@ def test_search_vulnerabilities_unknown_id_returns_empty():
     results = db_inst.search_vulnerabilities(cve="CVE-9999-00000")
     assert isinstance(results, list)
     assert len(results) == 0
+
+
+# ===========================================================================
+# Hypothesis — property-based tests
+# ===========================================================================
+
+from hypothesis import given, settings
+from hypothesis import strategies as st
+
+_version_component = st.integers(min_value=0, max_value=9999)
+_valid_version = st.builds(
+    lambda a, b, c: f"{a}.{b}.{c}",
+    _version_component,
+    _version_component,
+    _version_component,
+)
+
+
+# ---------------------------------------------------------------------------
+# retrieve_vulnerabilities: every returned CVE satisfies the filter invariants
+# ---------------------------------------------------------------------------
+
+
+@given(target_version=_valid_version, is_auth=st.booleans())
+@settings(max_examples=200)
+def test_retrieve_vulnerabilities_results_satisfy_version_bounds(
+    target_version, is_auth
+):
+    """Every CVE returned must have min_version <= target <= max_version."""
+    from flowhound.vulnerabilities.io.version_detection import convert_version_to_tuple
+
+    db = Database()
+    results = db.retrieve_vulnerabilities(
+        application="langflow", target_version=target_version, is_auth=is_auth
+    )
+    target_tuple = convert_version_to_tuple(target_version)
+    for cve in results:
+        assert convert_version_to_tuple(cve.min_impacted_version) <= target_tuple
+        assert convert_version_to_tuple(cve.max_impacted_version) >= target_tuple
+
+
+@given(target_version=_valid_version, is_auth=st.booleans())
+@settings(max_examples=200)
+def test_retrieve_vulnerabilities_results_match_requested_application(
+    target_version, is_auth
+):
+    """Every CVE returned must belong to the requested application."""
+    db = Database()
+    for app in ("langflow", "mlflow"):
+        results = db.retrieve_vulnerabilities(
+            application=app, target_version=target_version, is_auth=is_auth
+        )
+        assert all(cve.application.lower() == app for cve in results)
+
+
+@given(target_version=_valid_version, is_auth=st.booleans())
+@settings(max_examples=200)
+def test_retrieve_vulnerabilities_auth_filter_respected(target_version, is_auth):
+    """When is_auth=False, no returned CVE should require authentication."""
+    db = Database()
+    results = db.retrieve_vulnerabilities(
+        application="langflow", target_version=target_version, is_auth=False
+    )
+    assert all(not cve.auth_required for cve in results)
+
+
+# ---------------------------------------------------------------------------
+# search_vulnerabilities: result CVE IDs always match the search term
+# ---------------------------------------------------------------------------
+
+
+@given(st.text(min_size=1))
+@settings(max_examples=200)
+def test_search_vulnerabilities_results_always_match_query(cve_id):
+    """Every result from search_vulnerabilities must have cve_id matching the query."""
+    db = Database()
+    results = db.search_vulnerabilities(cve=cve_id)
+    assert all(r.cve_id.lower() == cve_id.lower() for r in results)
+
+
+@given(
+    st.text(min_size=1).filter(
+        lambda s: s not in {r["cve_id"] for r in Database().records}
+    )
+)
+@settings(max_examples=100)
+def test_search_vulnerabilities_unknown_id_always_empty(cve_id):
+    """Searching for a CVE ID that does not exist always returns an empty list."""
+    db = Database()
+    assert db.search_vulnerabilities(cve=cve_id) == []
