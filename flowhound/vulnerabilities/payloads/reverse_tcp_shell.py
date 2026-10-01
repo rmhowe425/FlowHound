@@ -5,6 +5,8 @@ class Payload(PayloadBaseClass):
     blocking = True  # socket.connect + os.execv block; _popen_wrap needed
 
     def __init__(self, lhost: str, lport: int):
+        self.lhost = lhost
+        self.lport = lport
         self.payload = self.generate_payload(lhost=lhost, lport=lport)
 
     def generate_payload(self, lhost: str, lport: int) -> str:
