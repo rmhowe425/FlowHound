@@ -192,12 +192,17 @@ class TestExploit:
                 "flowhound.vulnerabilities.clients.langflow.post",
                 return_value=_mock_auth_post(),
             ),
-            patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_18729.post",
-                return_value=_mock_resp(200, {"result": "ok"}),
-            ) as mock_post,
+            patch.object(
+                exploit,
+                "_upload_flow",
+                return_value="flow-abc123",
+            ) as mock_upload,
+            patch.object(exploit, "_trigger_flow"),
+            patch.object(exploit, "_delete_flow"),
         ):
-            exploit.exploit(
+            result = exploit.exploit(
                 base_url=_BASE_URL, username="admin", password="secret", payload=payload
             )
-        assert "        x = 99" in mock_post.call_args.kwargs["json"]["code"]
+        assert result is True
+        uploaded_code = mock_upload.call_args.kwargs["component_code"]
+        assert "        x = 99" in uploaded_code
