@@ -30,3 +30,9 @@ Thumbs.db
 *.db
 
 site/
+
+# Coverage reports (generated artifacts - not suitable for version control)
+.coverage
+coverage.json
+coverage.xml
+htmlcov/
