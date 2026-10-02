@@ -32,7 +32,13 @@ class LangflowClient(TargetClient):
 
         if resp.status_code == 200:
             resp_json = resp.json()
-            headers["Authorization"] = f"Bearer {resp_json['access_token']}"
+            token = resp_json.get("access_token")
+            if not token:
+                self.logger.warning(
+                    "auto_login succeeded but response contained no access_token."
+                )
+                return None
+            headers["Authorization"] = f"Bearer {token}"
             return headers
 
         self.logger.warning(
@@ -71,7 +77,13 @@ class LangflowClient(TargetClient):
             raise RuntimeError(f"Unable to authenticate with Langflow: {e!s}")
 
         if resp.status_code == 200:
-            return {"Authorization": f"Bearer {resp_json['access_token']}"}
+            token = resp_json.get("access_token")
+            if not token:
+                self.logger.warning(
+                    "Login succeeded but response contained no access_token."
+                )
+                return None
+            return {"Authorization": f"Bearer {token}"}
 
         self.logger.warning(
             f"Unable to authenticate, `{endpoint}` returned with {resp.status_code}"

@@ -91,18 +91,24 @@ class Database:
         -------
         List of CVE objects returned based on `application` and `target_version`.
         """
-        version_formatted = convert_version_to_tuple(target_version=target_version)
+        try:
+            version_formatted = convert_version_to_tuple(target_version=target_version)
+        except ValueError as e:
+            raise ValueError(f"Invalid target version {target_version!r}: {e}") from e
 
-        results = [
-            record
-            for record in self.records
-            if record["application"].lower() == application.lower()
-            and convert_version_to_tuple(record["min_impacted_version"])
-            <= version_formatted
-            and convert_version_to_tuple(record["max_impacted_version"])
-            >= version_formatted
-            and (is_auth or not record["auth_required"])
-        ]
+        results = []
+        for record in self.records:
+            if record["application"].lower() != application.lower():
+                continue
+            if not (is_auth or not record["auth_required"]):
+                continue
+            try:
+                min_ver = convert_version_to_tuple(record["min_impacted_version"])
+                max_ver = convert_version_to_tuple(record["max_impacted_version"])
+            except ValueError:
+                continue
+            if min_ver <= version_formatted <= max_ver:
+                results.append(record)
 
         return [CVE(**record) for record in results]
 
