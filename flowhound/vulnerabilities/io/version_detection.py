@@ -117,12 +117,18 @@ def get_mlflow_target_version(
 
     try:
         resp = get(base_url + endpoint, timeout=20, proxies=proxies)
-        version = resp.text
+        version = resp.text.strip()
     except (RequestException, OSError) as e:
         raise RuntimeError(f"Error retrieving target MLflow version: {e}")
 
     if resp.status_code != 200 or not version or version.count(".") != 2:
         raise RuntimeError("Unable to retrieve MLflow version.")
+
+    parts = version.split(".")
+    if not all(part.isdigit() for part in parts):
+        raise RuntimeError(
+            f"Unable to retrieve MLflow version: unexpected format {version!r}."
+        )
 
     return version
 
