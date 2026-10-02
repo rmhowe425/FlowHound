@@ -164,8 +164,8 @@ class TestExploit:
                 is True
             )
 
-    def test_trigger_none_always_returns_true(self):
-        """trigger_vuln returning None → exploit still returns True."""
+    def test_trigger_none_returns_false(self):
+        """trigger_vuln returning None (network error) → exploit returns False."""
         exploit = Exploit()
         with (
             patch(
@@ -179,7 +179,7 @@ class TestExploit:
         ):
             assert (
                 exploit.exploit(base_url=_BASE_URL, username="admin", password="secret")
-                is True
+                is False
             )
 
     def test_custom_payload_with_blocking(self):

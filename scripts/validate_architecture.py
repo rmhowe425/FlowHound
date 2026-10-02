@@ -31,6 +31,11 @@ RULES: list[tuple[str, str, str]] = [
         "flowhound.vulnerabilities.io",
         "exploit modules must not import from the io layer directly",
     ),
+    (
+        "flowhound/vulnerabilities/cve",
+        "flowhound.vulnerabilities.io",
+        "cve domain model must not import from the io layer directly",
+    ),
 ]
 
 

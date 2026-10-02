@@ -1,6 +1,6 @@
 import importlib
 
-from flowhound.vulnerabilities.io.version_detection import convert_tuple_to_version
+from flowhound.vulnerabilities.utils import convert_tuple_to_version
 
 
 class CVE:
