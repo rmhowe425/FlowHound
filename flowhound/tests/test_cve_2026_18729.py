@@ -27,6 +27,13 @@ def _mock_auth_post(status: int = 200):
     return resp
 
 
+def _mock_auto_login_disabled():
+    resp = MagicMock()
+    resp.status_code = 403
+    resp.json.return_value = {}
+    return resp
+
+
 # ---------------------------------------------------------------------------
 # _parse_response
 # ---------------------------------------------------------------------------
@@ -119,9 +126,15 @@ class TestTriggerVuln:
 class TestExploit:
     def test_auth_failure_returns_false(self):
         exploit = Exploit()
-        with patch(
-            "flowhound.vulnerabilities.clients.langflow.post",
-            return_value=_mock_auth_post(401),
+        with (
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.get",
+                return_value=_mock_auto_login_disabled(),
+            ),
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.post",
+                return_value=_mock_auth_post(401),
+            ),
         ):
             assert (
                 exploit.exploit(base_url=_BASE_URL, username="admin", password="wrong")
@@ -131,6 +144,10 @@ class TestExploit:
     def test_200_returns_true(self):
         exploit = Exploit()
         with (
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.get",
+                return_value=_mock_auto_login_disabled(),
+            ),
             patch(
                 "flowhound.vulnerabilities.clients.langflow.post",
                 return_value=_mock_auth_post(),
@@ -148,6 +165,10 @@ class TestExploit:
     def test_400_with_zero_division_returns_true(self):
         exploit = Exploit()
         with (
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.get",
+                return_value=_mock_auto_login_disabled(),
+            ),
             patch(
                 "flowhound.vulnerabilities.clients.langflow.post",
                 return_value=_mock_auth_post(),
@@ -169,6 +190,10 @@ class TestExploit:
         exploit = Exploit()
         with (
             patch(
+                "flowhound.vulnerabilities.clients.langflow.get",
+                return_value=_mock_auto_login_disabled(),
+            ),
+            patch(
                 "flowhound.vulnerabilities.clients.langflow.post",
                 return_value=_mock_auth_post(),
             ),
@@ -188,6 +213,10 @@ class TestExploit:
         payload.blocking = True
         exploit = Exploit()
         with (
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.get",
+                return_value=_mock_auto_login_disabled(),
+            ),
             patch(
                 "flowhound.vulnerabilities.clients.langflow.post",
                 return_value=_mock_auth_post(),

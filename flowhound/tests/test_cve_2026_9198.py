@@ -190,10 +190,18 @@ class TestExploit:
         assert result is False
 
     def test_auth_failure_returns_false(self):
-        auth_resp = _mock_resp(401, {})
+        auto_login_resp = _mock_resp(401, {})
+        login_resp = _mock_resp(401, {"detail": "Unauthorized"})
         exploit = Exploit()
-        with patch(
-            "flowhound.vulnerabilities.clients.langflow.get", return_value=auth_resp
+        with (
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.get",
+                return_value=auto_login_resp,
+            ),
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.post",
+                return_value=login_resp,
+            ),
         ):
             result = exploit.exploit(
                 base_url=_BASE_URL, username="admin", password="wrong"

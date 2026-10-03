@@ -27,6 +27,13 @@ def _mock_auth_post(status: int = 200):
     return resp
 
 
+def _mock_auto_login_disabled():
+    resp = MagicMock()
+    resp.status_code = 403
+    resp.json.return_value = {}
+    return resp
+
+
 # ---------------------------------------------------------------------------
 # get_uuid
 # ---------------------------------------------------------------------------
@@ -291,9 +298,15 @@ class TestParseCommand:
 class TestExploit:
     def test_auth_failure_returns_false(self):
         exploit = Exploit()
-        with patch(
-            "flowhound.vulnerabilities.clients.langflow.post",
-            return_value=_mock_auth_post(401),
+        with (
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.get",
+                return_value=_mock_auto_login_disabled(),
+            ),
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.post",
+                return_value=_mock_auth_post(401),
+            ),
         ):
             assert (
                 exploit.exploit(base_url=_BASE_URL, username="admin", password="wrong")
@@ -303,6 +316,10 @@ class TestExploit:
     def test_uuid_failure_returns_false(self):
         exploit = Exploit()
         with (
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.get",
+                return_value=_mock_auto_login_disabled(),
+            ),
             patch(
                 "flowhound.vulnerabilities.clients.langflow.post",
                 return_value=_mock_auth_post(),
@@ -320,6 +337,10 @@ class TestExploit:
     def test_upload_failure_returns_false(self):
         exploit = Exploit()
         with (
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.get",
+                return_value=_mock_auto_login_disabled(),
+            ),
             patch(
                 "flowhound.vulnerabilities.clients.langflow.post",
                 return_value=_mock_auth_post(),
@@ -342,6 +363,10 @@ class TestExploit:
         exploit = Exploit()
         with (
             patch(
+                "flowhound.vulnerabilities.clients.langflow.get",
+                return_value=_mock_auto_login_disabled(),
+            ),
+            patch(
                 "flowhound.vulnerabilities.clients.langflow.post",
                 return_value=_mock_auth_post(),
             ),
@@ -362,6 +387,10 @@ class TestExploit:
     def test_full_success(self):
         exploit = Exploit()
         with (
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.get",
+                return_value=_mock_auto_login_disabled(),
+            ),
             patch(
                 "flowhound.vulnerabilities.clients.langflow.post",
                 return_value=_mock_auth_post(),
@@ -391,6 +420,10 @@ class TestExploit:
         payload.load_payload.return_value = "import os; os.system('id')"
         exploit = Exploit()
         with (
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.get",
+                return_value=_mock_auto_login_disabled(),
+            ),
             patch(
                 "flowhound.vulnerabilities.clients.langflow.post",
                 return_value=_mock_auth_post(),
@@ -438,6 +471,10 @@ class TestExploit:
         exploit = Exploit()
         with (
             patch(
+                "flowhound.vulnerabilities.clients.langflow.get",
+                return_value=_mock_auto_login_disabled(),
+            ),
+            patch(
                 "flowhound.vulnerabilities.clients.langflow.post",
                 return_value=_mock_auth_post(),
             ),
@@ -472,6 +509,10 @@ class TestExploit:
         payload = BashPayload(cmd="echo 'pwned' > pwned.txt")
         exploit = Exploit()
         with (
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.get",
+                return_value=_mock_auto_login_disabled(),
+            ),
             patch(
                 "flowhound.vulnerabilities.clients.langflow.post",
                 return_value=_mock_auth_post(),

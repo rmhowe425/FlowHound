@@ -54,3 +54,38 @@ class TargetClient(ABC):
             Authentication headers on success, or None on failure / unsupported.
         """
         return None
+
+    def handle_authentication(
+        self, username: str = "", password: str = ""
+    ) -> dict[str, str] | None:
+        """
+        Resolve an auth header using the best available method.
+
+        Tries ``auto_login()`` first.  If that fails and ``username`` and
+        ``password`` are both provided, falls back to ``authenticate()``.
+
+        Parameters
+        ----------
+        username : str
+            Username to authenticate with (optional).
+        password : str
+            Password to authenticate with (optional).
+
+        Returns
+        -------
+        dict[str, str] | None
+            Authentication headers on success, or None on failure.
+        """
+        self.logger.info("Checking whether auto_login is enabled....")
+        headers = self.auto_login()
+        if headers is not None:
+            self.logger.info("auto_login is enabled.")
+            return headers
+
+        self.logger.info("auto_login is not enabled.")
+        if username and password:
+            return self.authenticate(username=username, password=password)
+        else:
+            self.logger.warning("No credentials provided. Stopping exploit module.")
+
+        return None
