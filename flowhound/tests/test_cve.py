@@ -1,7 +1,7 @@
 import pytest
 
 from flowhound.vulnerabilities.cve.cve import CVE
-from flowhound.vulnerabilities.exploits.cve_2026_9198 import Exploit
+from flowhound.vulnerabilities.exploits.langflow.cve_2026_9198 import Exploit
 
 _CVE_BASE = {
     "application": "langflow",
@@ -10,8 +10,9 @@ _CVE_BASE = {
     "cvss_severity": 1.0,
     "min_impacted_version": "1.0.0",
     "max_impacted_version": "1.10.0",
-    "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_44221",
-    "exploit_class": "Exploit",
+    "module": "flowhound.vulnerabilities.exploits.cve_2026_44221",
+    "module_class": "Exploit",
+    "module_type": "exploit",
     "auth_required": False,
 }
 
@@ -24,8 +25,9 @@ cve_creation = [
             "cvss_severity": 9.8,
             "min_impacted_version": "1.0.0",
             "max_impacted_version": "1.10.0",
-            "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_44221",
-            "exploit_class": "Exploit",
+            "module": "flowhound.vulnerabilities.exploits.cve_2026_44221",
+            "module_class": "Exploit",
+            "module_type": "exploit",
             "auth_required": True,
         },
         id="auth_required",
@@ -38,8 +40,9 @@ cve_creation = [
             "cvss_severity": 1.0,
             "min_impacted_version": "1.0.0",
             "max_impacted_version": "1.10.0",
-            "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_44221",
-            "exploit_class": "Exploit",
+            "module": "flowhound.vulnerabilities.exploits.cve_2026_44221",
+            "module_class": "Exploit",
+            "module_type": "exploit",
             "auth_required": False,
         },
         id="no_auth",
@@ -95,8 +98,9 @@ def test_set_max_impacted_version_invalid(input, error, error_msg):
         "cvss_severity": 1.0,
         "min_impacted_version": "1.0.0",
         "max_impacted_version": "1.10.0",
-        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_44221",
-        "exploit_class": "Exploit",
+        "module": "flowhound.vulnerabilities.exploits.cve_2026_44221",
+        "module_class": "Exploit",
+        "module_type": "exploit",
         "auth_required": False,
     }
 
@@ -114,8 +118,9 @@ def test_set_min_impacted_version_invalid(input, error, error_msg):
         "cvss_severity": 1.0,
         "min_impacted_version": "1.0.0",
         "max_impacted_version": "1.10.0",
-        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_44221",
-        "exploit_class": "Exploit",
+        "module": "flowhound.vulnerabilities.exploits.cve_2026_44221",
+        "module_class": "Exploit",
+        "module_type": "exploit",
         "auth_required": False,
     }
 
@@ -124,7 +129,7 @@ def test_set_min_impacted_version_invalid(input, error, error_msg):
         cve_inst.min_impacted_version = input
 
 
-def test_get_exploit_instance():
+def test_get_module_instance():
     cve_dict = {
         "application": "langflow",
         "cve_id": "CVE-2026-44221",
@@ -132,18 +137,19 @@ def test_get_exploit_instance():
         "cvss_severity": 1.0,
         "min_impacted_version": "1.0.0",
         "max_impacted_version": "1.10.0",
-        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_9198",
-        "exploit_class": "Exploit",
+        "module": "flowhound.vulnerabilities.exploits.langflow.cve_2026_9198",
+        "module_class": "Exploit",
+        "module_type": "exploit",
         "auth_required": False,
     }
 
     cve_inst = CVE(**cve_dict)
-    inst = cve_inst.get_exploit_instance()
+    inst = cve_inst.get_module_instance()
 
     assert isinstance(inst, Exploit)
 
 
-def test_get_exploit_instance_bad_module_raises_runtime_error():
+def test_get_module_instance_bad_module_raises_runtime_error():
     cve_dict = {
         "application": "langflow",
         "cve_id": "CVE-2026-44221",
@@ -151,14 +157,15 @@ def test_get_exploit_instance_bad_module_raises_runtime_error():
         "cvss_severity": 1.0,
         "min_impacted_version": "1.0.0",
         "max_impacted_version": "1.10.0",
-        "exploit_module": "flowhound.vulnerabilities.exploits.does_not_exist",
-        "exploit_class": "Exploit",
+        "module": "flowhound.vulnerabilities.exploits.does_not_exist",
+        "module_class": "Exploit",
+        "module_type": "exploit",
         "auth_required": False,
     }
 
     cve_inst = CVE(**cve_dict)
-    with pytest.raises(RuntimeError, match="Error importing exploit module"):
-        cve_inst.get_exploit_instance()
+    with pytest.raises(RuntimeError, match="Error importing module"):
+        cve_inst.get_module_instance()
 
 
 # ===========================================================================
@@ -172,8 +179,9 @@ _CVE_TUPLE_BASE = {
     "cvss_severity": 7.5,
     "min_impacted_version": "1.0.0",
     "max_impacted_version": "1.10.0",
-    "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_9198",
-    "exploit_class": "Exploit",
+    "module": "flowhound.vulnerabilities.exploits.langflow.cve_2026_9198",
+    "module_class": "Exploit",
+    "module_type": "exploit",
     "auth_required": False,
 }
 
@@ -243,8 +251,9 @@ _CVE_HYPOTHESIS_BASE = {
     "cvss_severity": 7.5,
     "min_impacted_version": "1.0.0",
     "max_impacted_version": "9.9.9",
-    "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_9198",
-    "exploit_class": "Exploit",
+    "module": "flowhound.vulnerabilities.exploits.langflow.cve_2026_9198",
+    "module_class": "Exploit",
+    "module_type": "exploit",
     "auth_required": False,
 }
 
@@ -333,3 +342,40 @@ def test_cve_application_setter_accepts_any_non_empty_string(app_name):
     cve = CVE(**_CVE_HYPOTHESIS_BASE)
     cve.application = app_name
     assert cve.application == app_name
+
+
+# ===========================================================================
+# ModuleType setter — invalid value raises ValueError
+# ===========================================================================
+
+
+def test_cve_invalid_module_type_raises():
+    """Passing an unrecognised module_type string raises ValueError."""
+    with pytest.raises(ValueError, match="`module_type` must be either"):
+        CVE(**{**_CVE_BASE, "module_type": "scanner"})
+
+
+def test_cve_module_type_auxiliary_is_accepted():
+    """'auxiliary' is a valid module_type and should not raise."""
+    cve = CVE(**{**_CVE_BASE, "module_type": "auxiliary"})
+    assert cve.module_type == "auxiliary"
+
+
+# ===========================================================================
+# Hypothesis — CVE.module_type setter: only "exploit" and "auxiliary" are valid
+# ===========================================================================
+
+
+@given(st.text(min_size=1).filter(lambda s: s not in ("exploit", "auxiliary")))
+@settings(max_examples=300)
+def test_cve_module_type_setter_rejects_all_non_valid_strings(module_type):
+    """Any string other than 'exploit' or 'auxiliary' always raises ValueError."""
+    with pytest.raises(ValueError, match="`module_type` must be either"):
+        CVE(**{**_CVE_BASE, "module_type": module_type})
+
+
+@given(st.sampled_from(["exploit", "auxiliary"]))
+def test_cve_module_type_setter_accepts_both_valid_values(module_type):
+    """'exploit' and 'auxiliary' are always accepted without raising."""
+    cve = CVE(**{**_CVE_BASE, "module_type": module_type})
+    assert cve.module_type == module_type

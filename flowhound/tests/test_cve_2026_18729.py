@@ -1,8 +1,8 @@
-"""Tests for flowhound.vulnerabilities.exploits.cve_2026_18729."""
+"""Tests for flowhound.vulnerabilities.exploits.langflow.cve_2026_18729."""
 
 from unittest.mock import MagicMock, patch
 
-from flowhound.vulnerabilities.exploits.cve_2026_18729 import Exploit
+from flowhound.vulnerabilities.exploits.langflow.cve_2026_18729 import Exploit
 
 _BASE_URL = "http://localhost:7860"
 _AUTH_HEADERS = {
@@ -85,7 +85,7 @@ class TestTriggerVuln:
         mock_resp = _mock_resp(200, {"result": "ok"})
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_18729.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_18729.post",
             return_value=mock_resp,
         ):
             assert (
@@ -98,7 +98,7 @@ class TestTriggerVuln:
     def test_blocking_uses_blocking_boilerplate(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_18729.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_18729.post",
             return_value=_mock_resp(200),
         ) as mock_post:
             exploit.trigger_vuln(
@@ -109,7 +109,7 @@ class TestTriggerVuln:
     def test_network_error_returns_none(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_18729.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_18729.post",
             side_effect=ConnectionError("refused"),
         ):
             assert (
@@ -153,7 +153,7 @@ class TestExploit:
                 return_value=_mock_auth_post(),
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_18729.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_18729.post",
                 return_value=_mock_resp(200, {"result": "ok"}),
             ),
         ):
@@ -174,7 +174,7 @@ class TestExploit:
                 return_value=_mock_auth_post(),
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_18729.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_18729.post",
                 return_value=_mock_resp(
                     400, {"detail": {"error": "ZeroDivisionError(division by zero)"}}
                 ),
@@ -198,7 +198,7 @@ class TestExploit:
                 return_value=_mock_auth_post(),
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_18729.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_18729.post",
                 side_effect=ConnectionError("refused"),
             ),
         ):
@@ -235,3 +235,243 @@ class TestExploit:
         assert result is True
         uploaded_code = mock_upload.call_args.kwargs["component_code"]
         assert "        x = 99" in uploaded_code
+
+
+# ---------------------------------------------------------------------------
+# _upload_flow
+# ---------------------------------------------------------------------------
+
+
+class TestUploadFlow:
+    def test_returns_flow_id_on_200(self):
+        exploit = Exploit()
+        with patch(
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_18729.post",
+            return_value=_mock_resp(200, {"id": "flow-abc"}),
+        ):
+            assert (
+                exploit._upload_flow(
+                    base_url=_BASE_URL, auth=_AUTH_HEADERS, component_code="x = 1"
+                )
+                == "flow-abc"
+            )
+
+    def test_returns_flow_id_on_201(self):
+        exploit = Exploit()
+        with patch(
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_18729.post",
+            return_value=_mock_resp(201, {"id": "flow-xyz"}),
+        ):
+            assert (
+                exploit._upload_flow(
+                    base_url=_BASE_URL, auth=_AUTH_HEADERS, component_code="x = 1"
+                )
+                == "flow-xyz"
+            )
+
+    def test_non_200_201_returns_none(self):
+        exploit = Exploit()
+        with patch(
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_18729.post",
+            return_value=_mock_resp(400, {"error": "bad request"}),
+        ):
+            assert (
+                exploit._upload_flow(
+                    base_url=_BASE_URL, auth=_AUTH_HEADERS, component_code="x = 1"
+                )
+                is None
+            )
+
+    def test_network_error_returns_none(self):
+        exploit = Exploit()
+        with patch(
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_18729.post",
+            side_effect=ConnectionError("refused"),
+        ):
+            assert (
+                exploit._upload_flow(
+                    base_url=_BASE_URL, auth=_AUTH_HEADERS, component_code="x = 1"
+                )
+                is None
+            )
+
+    def test_embeds_component_code_in_payload(self):
+        """The component_code value must appear in the flow JSON sent to the server."""
+        exploit = Exploit()
+        with patch(
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_18729.post",
+            return_value=_mock_resp(201, {"id": "flow-1"}),
+        ) as mock_post:
+            exploit._upload_flow(
+                base_url=_BASE_URL, auth=_AUTH_HEADERS, component_code="SENTINEL_CODE"
+            )
+        sent_json = mock_post.call_args.kwargs["json"]
+        code_value = sent_json["data"]["nodes"][0]["data"]["node"]["template"]["code"][
+            "value"
+        ]
+        assert "SENTINEL_CODE" in code_value
+
+
+# ---------------------------------------------------------------------------
+# _trigger_flow
+# ---------------------------------------------------------------------------
+
+
+class TestTriggerFlow:
+    def test_returns_true_on_success(self):
+        exploit = Exploit()
+        with patch(
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_18729.post",
+            return_value=_mock_resp(200),
+        ):
+            assert (
+                exploit._trigger_flow(
+                    base_url=_BASE_URL, auth=_AUTH_HEADERS, flow_id="flow-1"
+                )
+                is True
+            )
+
+    def test_network_error_still_returns_true(self):
+        """A network error on trigger is the expected reverse-shell success signal."""
+        exploit = Exploit()
+        with patch(
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_18729.post",
+            side_effect=ConnectionError("refused"),
+        ):
+            assert (
+                exploit._trigger_flow(
+                    base_url=_BASE_URL, auth=_AUTH_HEADERS, flow_id="flow-1"
+                )
+                is True
+            )
+
+
+# ---------------------------------------------------------------------------
+# _delete_flow
+# ---------------------------------------------------------------------------
+
+
+class TestDeleteFlow:
+    def test_success_does_not_raise(self):
+        exploit = Exploit()
+        with patch(
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_18729.delete",
+            return_value=_mock_resp(200),
+        ):
+            exploit._delete_flow(
+                base_url=_BASE_URL, auth=_AUTH_HEADERS, flow_id="flow-1"
+            )
+
+    def test_network_error_does_not_raise(self):
+        exploit = Exploit()
+        with patch(
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_18729.delete",
+            side_effect=ConnectionError("refused"),
+        ):
+            exploit._delete_flow(
+                base_url=_BASE_URL, auth=_AUTH_HEADERS, flow_id="flow-1"
+            )
+
+
+# ---------------------------------------------------------------------------
+# exploit — blocking path with real _upload_flow / _trigger_flow / _delete_flow
+# ---------------------------------------------------------------------------
+
+
+class TestExploitBlockingPath:
+    def test_upload_failure_returns_false(self):
+        """If _upload_flow returns None the exploit halts and returns False."""
+        exploit = Exploit()
+        with (
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.get",
+                return_value=_mock_auto_login_disabled(),
+            ),
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.post",
+                return_value=_mock_auth_post(),
+            ),
+            patch.object(exploit, "_upload_flow", return_value=None),
+        ):
+            payload = MagicMock()
+            payload.load_payload.return_value = "x = 1"
+            payload.blocking = True
+            assert (
+                exploit.exploit(
+                    base_url=_BASE_URL,
+                    username="admin",
+                    password="secret",
+                    payload=payload,
+                )
+                is False
+            )
+
+    def test_full_blocking_path_calls_all_three_methods(self):
+        """exploit() must call _upload_flow, _trigger_flow, and _delete_flow in order."""
+        exploit = Exploit()
+        call_order = []
+
+        with (
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.get",
+                return_value=_mock_auto_login_disabled(),
+            ),
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.post",
+                return_value=_mock_auth_post(),
+            ),
+            patch.object(
+                exploit,
+                "_upload_flow",
+                side_effect=lambda **_: call_order.append("upload") or "flow-1",
+            ),
+            patch.object(
+                exploit,
+                "_trigger_flow",
+                side_effect=lambda **_: call_order.append("trigger"),
+            ),
+            patch.object(
+                exploit,
+                "_delete_flow",
+                side_effect=lambda **_: call_order.append("delete"),
+            ),
+        ):
+            payload = MagicMock()
+            payload.load_payload.return_value = "x = 1"
+            payload.blocking = True
+            result = exploit.exploit(
+                base_url=_BASE_URL,
+                username="admin",
+                password="secret",
+                payload=payload,
+            )
+
+        assert result is True
+        assert call_order == ["upload", "trigger", "delete"]
+
+
+# ---------------------------------------------------------------------------
+# exploit — non-200/non-400 terminal path (lines 287-288)
+# ---------------------------------------------------------------------------
+
+
+class TestExploitTerminalPath:
+    def test_unexpected_status_returns_false(self):
+        """A non-200, non-400 response from trigger_vuln returns False."""
+        exploit = Exploit()
+        with (
+            patch.object(
+                exploit,
+                "handle_authentication",
+                return_value={"Authorization": "Bearer t"},
+            ),
+            patch.object(
+                exploit,
+                "trigger_vuln",
+                return_value=_mock_resp(500),
+            ),
+        ):
+            assert (
+                exploit.exploit(base_url=_BASE_URL, username="admin", password="secret")
+                is False
+            )

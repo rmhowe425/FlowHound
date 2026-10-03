@@ -1,8 +1,8 @@
-"""Tests for flowhound.vulnerabilities.exploits.cve_2026_7873."""
+"""Tests for flowhound.vulnerabilities.exploits.langflow.cve_2026_7873."""
 
 from unittest.mock import MagicMock, patch
 
-from flowhound.vulnerabilities.exploits.cve_2026_7873 import Exploit
+from flowhound.vulnerabilities.exploits.langflow.cve_2026_7873 import Exploit
 
 _BASE_URL = "http://localhost:7860"
 _AUTH_HEADERS = {
@@ -44,7 +44,7 @@ class TestTriggerVuln:
         mock_resp = _mock_resp(200, {"detail": "ok"})
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_7873.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_7873.post",
             return_value=mock_resp,
         ):
             result = exploit.trigger_vuln(
@@ -55,7 +55,7 @@ class TestTriggerVuln:
     def test_network_error_returns_none(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_7873.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_7873.post",
             side_effect=ConnectionError("refused"),
         ):
             result = exploit.trigger_vuln(
@@ -68,7 +68,7 @@ class TestTriggerVuln:
         code = "import os\nos.system('id')"
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_7873.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_7873.post",
             return_value=mock_resp,
         ) as mock_post:
             exploit.trigger_vuln(base_url=_BASE_URL, auth=_AUTH_HEADERS, code=code)
@@ -113,7 +113,7 @@ class TestExploit:
                 return_value=_mock_auth_post(),
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_7873.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_7873.post",
                 return_value=_mock_resp(200, {"result": "uid=0"}),
             ),
         ):
@@ -135,7 +135,7 @@ class TestExploit:
                 return_value=_mock_auth_post(),
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_7873.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_7873.post",
                 side_effect=ConnectionError("timeout"),
             ),
         ):
@@ -156,7 +156,7 @@ class TestExploit:
                 return_value=_mock_auth_post(),
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_7873.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_7873.post",
                 return_value=_mock_resp(403, {"detail": "forbidden"}),
             ),
         ):
@@ -179,7 +179,7 @@ class TestExploit:
                 return_value=_mock_auth_post(),
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_7873.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_7873.post",
                 return_value=_mock_resp(200, {"result": "custom"}),
             ) as mock_post,
         ):
@@ -200,7 +200,7 @@ class TestExploit:
                 return_value=_mock_auth_post(),
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_7873.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_7873.post",
                 return_value=_mock_resp(200, {"result": "uid=0"}),
             ) as mock_post,
         ):

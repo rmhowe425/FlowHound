@@ -1,0 +1,110 @@
+import logging
+from abc import ABC
+from typing import ClassVar
+
+from flowhound.vulnerabilities.clients.base import TargetClient
+
+
+class BaseModule(ABC):
+    """
+    Base class providing target client management, authentication helpers,
+    and structured logging for all vulnerability modules (exploits and auxiliary).
+    """
+
+    TIMEOUT = 20
+
+    _client_class: ClassVar[type[TargetClient]]
+
+    def _build_client(
+        self, base_url: str, proxies: dict[str, str] | None = None
+    ) -> TargetClient:
+        return self._client_class(
+            base_url=base_url, proxies=proxies, timeout=self.TIMEOUT
+        )
+
+    @property
+    def logger(self) -> logging.Logger:
+        return logging.getLogger(type(self).__module__)
+
+    def auto_login(
+        self, base_url: str, proxies: dict[str, str] | None = None
+    ) -> dict[str, str] | None:
+        """
+        Authenticate using the target's auto_login endpoint.
+
+        Parameters
+        ----------
+        base_url : str
+            URL for target instance.
+        proxies : dict[str, str] | None
+            HTTP(s) proxy dict to use for network I/O operations
+
+        Returns
+        -------
+        HTTP authentication header or None.
+        """
+        return self._build_client(base_url=base_url, proxies=proxies).auto_login()
+
+    def authenticate(
+        self,
+        base_url: str,
+        username: str,
+        password: str,
+        proxies: dict[str, str] | None = None,
+    ) -> dict[str, str] | None:
+        """
+        Authenticate using target credentials.
+
+        Parameters
+        ----------
+        base_url : str
+            URL for target instance.
+        username : str
+            Username to authenticate with.
+        password : str
+            Password to authenticate with.
+        proxies : dict[str, str] | None
+            HTTP(s) proxy dict to use for network I/O operations
+
+        Returns
+        -------
+        HTTP authentication header or None.
+        """
+        return self._build_client(base_url=base_url, proxies=proxies).authenticate(
+            username=username, password=password
+        )
+
+    def handle_authentication(
+        self,
+        base_url: str,
+        username: str = "",
+        password: str = "",
+        proxies: dict[str, str] | None = None,
+    ) -> dict[str, str] | None:
+        """
+        Resolve an auth header using the best available method.
+
+        Delegates to :meth:`~flowhound.vulnerabilities.clients.base.TargetClient.handle_authentication`
+        on the target client. Tries ``auto_login()`` first; if that fails and
+        ``username`` and ``password`` are provided, falls back to
+        ``authenticate()``.
+
+        Parameters
+        ----------
+        base_url : str
+            URL for target instance.
+        username : str
+            Username to authenticate with (optional).
+        password : str
+            Password to authenticate with (optional).
+        proxies : dict[str, str] | None
+            HTTP(s) proxy dict to use for network I/O operations
+
+        Returns
+        -------
+        dict[str, str] | None
+            Authentication headers on success, or None on failure.
+        """
+        return self._build_client(
+            base_url=base_url, proxies=proxies
+        ).handle_authentication(username=username, password=password)

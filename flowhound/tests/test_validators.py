@@ -318,3 +318,128 @@ def test_validate_proxy_valid_url_returns_dict(scheme, host, port):
     assert isinstance(result, dict)
     assert result["http"] == url
     assert result["https"] == url
+
+
+# ===========================================================================
+# validate_file_path
+# ===========================================================================
+
+
+def test_validate_file_path_none_returns_none():
+    from flowhound.cli.validators import validate_file_path
+
+    assert validate_file_path(ctx=None, param=None, value=None) is None
+
+
+def test_validate_file_path_absolute_returns_value():
+    from flowhound.cli.validators import validate_file_path
+
+    assert (
+        validate_file_path(ctx=None, param=None, value="/etc/passwd") == "/etc/passwd"
+    )
+
+
+def test_validate_file_path_relative_raises():
+    from flowhound.cli.validators import validate_file_path
+
+    with pytest.raises(click.BadParameter, match="absolute path"):
+        validate_file_path(ctx=None, param=None, value="etc/passwd")
+
+
+def test_validate_file_path_no_leading_slash_raises():
+    from flowhound.cli.validators import validate_file_path
+
+    with pytest.raises(click.BadParameter, match="absolute path"):
+        validate_file_path(ctx=None, param=None, value="passwd")
+
+
+# ===========================================================================
+# Hypothesis — validate_file_path invariants
+# ===========================================================================
+
+
+@given(st.text(min_size=1).filter(lambda s: not s.startswith("/")))
+@settings(max_examples=200)
+def test_validate_file_path_rejects_all_non_absolute(value):
+    """validate_file_path raises BadParameter for any path not starting with /."""
+    from flowhound.cli.validators import validate_file_path
+
+    with pytest.raises(click.BadParameter):
+        validate_file_path(ctx=None, param=None, value=value)
+
+
+@given(st.from_regex(r"/[a-z/._-]{1,50}", fullmatch=True))
+@settings(max_examples=200)
+def test_validate_file_path_accepts_all_absolute(value):
+    """validate_file_path returns the value unchanged for any absolute path."""
+    from flowhound.cli.validators import validate_file_path
+
+    assert validate_file_path(ctx=None, param=None, value=value) == value
+
+
+# ===========================================================================
+# Hypothesis — validate_payload_args port range contract
+# ===========================================================================
+
+
+@given(
+    host=st.from_regex(r"[a-z0-9]{1,20}\.[a-z]{2,4}", fullmatch=True),
+    port=st.integers(min_value=1, max_value=65535),
+)
+def test_validate_payload_args_valid_port_always_succeeds(host, port):
+    """Any valid LHOST:PORT in [1, 65535] is accepted and parsed correctly."""
+    from flowhound.cli.validators import validate_payload_args
+
+    result = validate_payload_args(None, f"{host}:{port}")
+    assert result == (host, port)
+
+
+@given(
+    host=st.from_regex(r"[a-z0-9]{1,20}\.[a-z]{2,4}", fullmatch=True),
+    port=st.integers().filter(lambda p: not (1 <= p <= 65535)),
+)
+def test_validate_payload_args_out_of_range_port_always_raises(host, port):
+    """Any port outside [1, 65535] always raises click.BadParameter."""
+    from flowhound.cli.validators import validate_payload_args
+
+    with pytest.raises(click.BadParameter):
+        validate_payload_args(None, f"{host}:{port}")
+
+
+# ===========================================================================
+# Hypothesis — validate_authentication credential-pair symmetry
+# ===========================================================================
+
+
+@given(username=st.text(min_size=1), password=st.text(min_size=1))
+def test_validate_authentication_both_non_empty_always_true(username, password):
+    """Any two non-empty strings always return True."""
+    from flowhound.cli.validators import validate_authentication
+
+    assert validate_authentication(username, password) is True
+
+
+@given(st.sampled_from(["", None]))
+def test_validate_authentication_both_empty_always_false(value):
+    """Both empty/None always return False without raising."""
+    from flowhound.cli.validators import validate_authentication
+
+    assert validate_authentication(value, value) is False
+
+
+@given(username=st.text(min_size=1))
+def test_validate_authentication_username_only_always_raises(username):
+    """A non-empty username with an empty password always raises BadParameter."""
+    from flowhound.cli.validators import validate_authentication
+
+    with pytest.raises(click.BadParameter):
+        validate_authentication(username, "")
+
+
+@given(password=st.text(min_size=1))
+def test_validate_authentication_password_only_always_raises(password):
+    """A non-empty password with an empty username always raises BadParameter."""
+    from flowhound.cli.validators import validate_authentication
+
+    with pytest.raises(click.BadParameter):
+        validate_authentication("", password)

@@ -1,8 +1,8 @@
-"""Tests for flowhound.vulnerabilities.exploits.cve_2024_27132."""
+"""Tests for flowhound.vulnerabilities.auxiliary.mlflow.cve_2024_27132."""
 
 from unittest.mock import MagicMock, patch
 
-from flowhound.vulnerabilities.exploits.cve_2024_27132 import Exploit
+from flowhound.vulnerabilities.auxiliary.mlflow.cve_2024_27132 import Auxiliary
 
 _BASE_URL = "http://localhost:5000"
 _AUTH_HEADERS = {
@@ -29,9 +29,9 @@ class TestTriggerVuln:
         mock_resp.status_code = 200
         mock_resp.text = "response body"
 
-        exploit = Exploit()
+        exploit = Auxiliary()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2024_27132.get",
+            "flowhound.vulnerabilities.auxiliary.mlflow.cve_2024_27132.get",
             return_value=mock_resp,
         ):
             result = exploit.trigger_vuln(
@@ -43,9 +43,9 @@ class TestTriggerVuln:
         assert result == (200, "response body")
 
     def test_network_error_returns_none(self):
-        exploit = Exploit()
+        exploit = Auxiliary()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2024_27132.get",
+            "flowhound.vulnerabilities.auxiliary.mlflow.cve_2024_27132.get",
             side_effect=ConnectionError("refused"),
         ):
             result = exploit.trigger_vuln(
@@ -62,7 +62,7 @@ class TestTriggerVuln:
 # ---------------------------------------------------------------------------
 
 
-class TestExploit:
+class TestRun:
     def test_ssrf_200_success(self):
         """A 200 from the artifact endpoint confirms SSRF."""
         auth_resp = _mock_auth_get(200)
@@ -70,17 +70,17 @@ class TestExploit:
         ssrf_resp.status_code = 200
         ssrf_resp.text = "ami-id\nami-launch-index\n"
 
-        exploit = Exploit()
+        exploit = Auxiliary()
         with (
             patch(
                 "flowhound.vulnerabilities.clients.mlflow.get", return_value=auth_resp
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2024_27132.get",
+                "flowhound.vulnerabilities.auxiliary.mlflow.cve_2024_27132.get",
                 return_value=ssrf_resp,
             ),
         ):
-            result = exploit.exploit(
+            result = exploit.run(
                 base_url=_BASE_URL, username="admin", password="secret"
             )
 
@@ -94,17 +94,17 @@ class TestExploit:
         error_resp.status_code = 500
         error_resp.text = f"Connection refused to {ssrf_target}"
 
-        exploit = Exploit()
+        exploit = Auxiliary()
         with (
             patch(
                 "flowhound.vulnerabilities.clients.mlflow.get", return_value=auth_resp
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2024_27132.get",
+                "flowhound.vulnerabilities.auxiliary.mlflow.cve_2024_27132.get",
                 return_value=error_resp,
             ),
         ):
-            result = exploit.exploit(
+            result = exploit.run(
                 base_url=_BASE_URL, username="admin", password="secret"
             )
 
@@ -117,29 +117,29 @@ class TestExploit:
         denied.status_code = 403
         denied.text = "Forbidden"
 
-        exploit = Exploit()
+        exploit = Auxiliary()
         with (
             patch(
                 "flowhound.vulnerabilities.clients.mlflow.get", return_value=auth_resp
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2024_27132.get",
+                "flowhound.vulnerabilities.auxiliary.mlflow.cve_2024_27132.get",
                 return_value=denied,
             ),
         ):
-            result = exploit.exploit(
+            result = exploit.run(
                 base_url=_BASE_URL, username="admin", password="secret"
             )
 
         assert result is False
 
     def test_auth_failure_returns_false(self):
-        exploit = Exploit()
+        exploit = Auxiliary()
         with patch(
             "flowhound.vulnerabilities.clients.mlflow.get",
             return_value=_mock_auth_get(401),
         ):
-            result = exploit.exploit(
+            result = exploit.run(
                 base_url=_BASE_URL, username="admin", password="wrongpass"
             )
 
@@ -149,48 +149,46 @@ class TestExploit:
         """Network errors on all probes yield False without raising."""
         auth_resp = _mock_auth_get(200)
 
-        exploit = Exploit()
+        exploit = Auxiliary()
         with (
             patch(
                 "flowhound.vulnerabilities.clients.mlflow.get", return_value=auth_resp
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2024_27132.get",
+                "flowhound.vulnerabilities.auxiliary.mlflow.cve_2024_27132.get",
                 side_effect=ConnectionError("refused"),
             ),
         ):
-            result = exploit.exploit(
+            result = exploit.run(
                 base_url=_BASE_URL, username="admin", password="secret"
             )
 
         assert result is False
 
-    def test_uses_custom_payload(self):
-        """Custom payload replaces the default SSRF target list."""
+    def test_uses_custom_f_path(self):
+        """Custom f_path replaces the default SSRF target list."""
         auth_resp = _mock_auth_get(200)
         ssrf_resp = MagicMock()
         ssrf_resp.status_code = 200
         ssrf_resp.text = "internal response"
 
         custom_target = "http://internal.corp/api/secret"
-        payload = MagicMock()
-        payload.load_payload.return_value = custom_target
 
-        exploit = Exploit()
+        exploit = Auxiliary()
         with (
             patch(
                 "flowhound.vulnerabilities.clients.mlflow.get", return_value=auth_resp
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2024_27132.get",
+                "flowhound.vulnerabilities.auxiliary.mlflow.cve_2024_27132.get",
                 return_value=ssrf_resp,
             ) as mock_get,
         ):
-            result = exploit.exploit(
+            result = exploit.run(
                 base_url=_BASE_URL,
                 username="admin",
                 password="secret",
-                payload=payload,
+                f_path=custom_target,
             )
 
         assert result is True

@@ -159,3 +159,54 @@ def test_mlflow_authenticate_network_error_raises_runtime_error():
         client = MLflowClient(base_url="http://localhost:5000")
         with pytest.raises(RuntimeError, match="Unable to authenticate with MLflow"):
             client.authenticate(username="admin", password="secret")
+
+
+# ---------------------------------------------------------------------------
+# TargetClient.handle_authentication — no-credentials warning branch
+# ---------------------------------------------------------------------------
+
+
+def test_handle_authentication_no_credentials_returns_none():
+    """handle_authentication returns None and logs a warning when neither auto_login
+    succeeds nor credentials are provided."""
+    client = ConcreteClient(base_url="http://localhost:7860")
+    # auto_login returns None (base implementation), no credentials supplied
+    result = client.handle_authentication(username="", password="")
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# LangflowClient — missing token warning branches
+# ---------------------------------------------------------------------------
+
+
+def test_langflow_auto_login_missing_token_returns_none():
+    """auto_login returns None when the 200 response contains no access_token."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {}  # no access_token key
+
+    with patch(
+        "flowhound.vulnerabilities.clients.langflow.get",
+        return_value=mock_resp,
+    ):
+        client = LangflowClient(base_url="http://localhost:7860")
+        result = client.auto_login()
+
+    assert result is None
+
+
+def test_langflow_authenticate_missing_token_returns_none():
+    """authenticate returns None when the 200 response contains no access_token."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {}  # no access_token key
+
+    with patch(
+        "flowhound.vulnerabilities.clients.langflow.post",
+        return_value=mock_resp,
+    ):
+        client = LangflowClient(base_url="http://localhost:7860")
+        result = client.authenticate(username="admin", password="secret")
+
+    assert result is None

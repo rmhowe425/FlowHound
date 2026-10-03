@@ -1,8 +1,8 @@
-"""Tests for flowhound.vulnerabilities.exploits.cve_2026_5027."""
+"""Tests for flowhound.vulnerabilities.exploits.langflow.cve_2026_5027."""
 
 from unittest.mock import MagicMock, patch
 
-from flowhound.vulnerabilities.exploits.cve_2026_5027 import Exploit
+from flowhound.vulnerabilities.exploits.langflow.cve_2026_5027 import Exploit
 
 _BASE_URL = "http://localhost:7860"
 _AUTH_HEADERS = {
@@ -43,7 +43,7 @@ class TestGetUuid:
     def test_success(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_5027.get",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_5027.get",
             return_value=_mock_resp(200, {"id": "abc-123"}),
         ):
             assert exploit.get_uuid(base_url=_BASE_URL, auth=_AUTH_HEADERS) == "abc-123"
@@ -51,7 +51,7 @@ class TestGetUuid:
     def test_non_200_returns_none(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_5027.get",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_5027.get",
             return_value=_mock_resp(401, {"detail": "unauthorized"}),
         ):
             assert exploit.get_uuid(base_url=_BASE_URL, auth=_AUTH_HEADERS) is None
@@ -59,7 +59,7 @@ class TestGetUuid:
     def test_missing_id_field_returns_none(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_5027.get",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_5027.get",
             return_value=_mock_resp(200, {"user": "admin"}),
         ):
             assert exploit.get_uuid(base_url=_BASE_URL, auth=_AUTH_HEADERS) is None
@@ -67,7 +67,7 @@ class TestGetUuid:
     def test_network_error_returns_none(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_5027.get",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_5027.get",
             side_effect=ConnectionError("refused"),
         ):
             assert exploit.get_uuid(base_url=_BASE_URL, auth=_AUTH_HEADERS) is None
@@ -82,7 +82,7 @@ class TestUploadFile:
     def test_returns_json_on_success(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_5027.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_5027.post",
             return_value=_mock_resp(200, {"path": "/uploads/file.json"}),
         ):
             result = exploit.upload_file(
@@ -96,7 +96,7 @@ class TestUploadFile:
     def test_args_included_in_json_when_provided(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_5027.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_5027.post",
             return_value=_mock_resp(200, {"path": "/uploads/file.json"}),
         ) as mock_post:
             exploit.upload_file(
@@ -115,7 +115,7 @@ class TestUploadFile:
     def test_args_omitted_from_json_when_empty(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_5027.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_5027.post",
             return_value=_mock_resp(200, {"path": "/uploads/file.json"}),
         ) as mock_post:
             exploit.upload_file(
@@ -134,7 +134,7 @@ class TestUploadFile:
     def test_network_error_returns_none(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_5027.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_5027.post",
             side_effect=ConnectionError("refused"),
         ):
             assert (
@@ -154,7 +154,7 @@ class TestTriggerVuln:
     def test_returns_true_on_200(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_5027.get",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_5027.get",
             return_value=_mock_resp(200),
         ):
             assert exploit.trigger_vuln(base_url=_BASE_URL, auth=_AUTH_HEADERS) is True
@@ -162,7 +162,7 @@ class TestTriggerVuln:
     def test_returns_false_on_non_200(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_5027.get",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_5027.get",
             return_value=_mock_resp(403),
         ):
             assert exploit.trigger_vuln(base_url=_BASE_URL, auth=_AUTH_HEADERS) is False
@@ -170,7 +170,7 @@ class TestTriggerVuln:
     def test_network_error_returns_none(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_5027.get",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_5027.get",
             side_effect=ConnectionError("refused"),
         ):
             assert exploit.trigger_vuln(base_url=_BASE_URL, auth=_AUTH_HEADERS) is None
@@ -325,7 +325,7 @@ class TestExploit:
                 return_value=_mock_auth_post(),
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_5027.get",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_5027.get",
                 return_value=_mock_resp(401, {"detail": "unauth"}),
             ),
         ):
@@ -346,11 +346,11 @@ class TestExploit:
                 return_value=_mock_auth_post(),
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_5027.get",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_5027.get",
                 return_value=_mock_resp(200, {"id": "uid-123"}),
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_5027.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_5027.post",
                 side_effect=ConnectionError("refused"),
             ),
         ):
@@ -371,11 +371,11 @@ class TestExploit:
                 return_value=_mock_auth_post(),
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_5027.get",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_5027.get",
                 side_effect=[_mock_resp(200, {"id": "uid-123"}), _mock_resp(403)],
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_5027.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_5027.post",
                 return_value=_mock_resp(200, {"path": "file.json"}),
             ),
         ):
@@ -396,11 +396,11 @@ class TestExploit:
                 return_value=_mock_auth_post(),
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_5027.get",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_5027.get",
                 side_effect=[_mock_resp(200, {"id": "uid-123"}), _mock_resp(200)],
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_5027.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_5027.post",
                 return_value=_mock_resp(200, {"path": "file.json"}),
             ),
         ):
@@ -429,11 +429,11 @@ class TestExploit:
                 return_value=_mock_auth_post(),
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_5027.get",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_5027.get",
                 side_effect=[_mock_resp(200, {"id": "uid-123"}), _mock_resp(200)],
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_5027.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_5027.post",
                 return_value=_mock_resp(200, {"path": "file.json"}),
             ) as mock_post,
         ):
@@ -479,11 +479,11 @@ class TestExploit:
                 return_value=_mock_auth_post(),
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_5027.get",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_5027.get",
                 side_effect=[_mock_resp(200, {"id": "uid-123"}), _mock_resp(200)],
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_5027.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_5027.post",
                 return_value=_mock_resp(200, {"path": "file.json"}),
             ) as mock_post,
         ):
@@ -518,11 +518,11 @@ class TestExploit:
                 return_value=_mock_auth_post(),
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_5027.get",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_5027.get",
                 side_effect=[_mock_resp(200, {"id": "uid-123"}), _mock_resp(200)],
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_5027.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_5027.post",
                 return_value=_mock_resp(200, {"path": "file.json"}),
             ) as mock_post,
         ):
@@ -541,3 +541,35 @@ class TestExploit:
             "-c",
             "echo 'pwned' > pwned.txt",
         ]
+
+
+# ---------------------------------------------------------------------------
+# exploit — _parse_command returns None for unquotable raw_command (lines 198-199)
+# ---------------------------------------------------------------------------
+
+
+class TestExploitParseFailure:
+    def test_unparseable_raw_command_returns_false(self):
+        """When _parse_command returns None (unmatched quote), exploit returns False."""
+        exploit = Exploit()
+        payload = MagicMock()
+        payload.raw_command = "id '"  # unmatched single quote → shlex.split raises
+        payload.blocking = False
+
+        with (
+            patch.object(
+                exploit,
+                "handle_authentication",
+                return_value={"Authorization": "Bearer t"},
+            ),
+            patch.object(exploit, "get_uuid", return_value="some-uuid"),
+        ):
+            assert (
+                exploit.exploit(
+                    base_url=_BASE_URL,
+                    username="admin",
+                    password="secret",
+                    payload=payload,
+                )
+                is False
+            )

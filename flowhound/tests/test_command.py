@@ -4,7 +4,9 @@ import click
 import pytest
 from click.testing import CliRunner
 
-from flowhound.cli.command import _get_payload, attack, sniff
+from flowhound.cli.command import _get_payload, attack, scan, sniff
+from flowhound.vulnerabilities.auxiliary.base_auxiliary_class import AuxiliaryBaseClass
+from flowhound.vulnerabilities.exploits.base_exploit_class import ExploitBaseClass
 from flowhound.vulnerabilities.io.database import Database
 from flowhound.vulnerabilities.payloads.execute_bash_command import (
     Payload as CommandPayload,
@@ -162,9 +164,9 @@ def test_attack_stops_after_first_success_without_autopwn():
     mock_vuln.cve_id = "CVE-2026-9999"
     mock_vuln.min_impacted_version = "1.0.0"
     mock_vuln.max_impacted_version = "1.10.0"
-    mock_exploit = MagicMock()
+    mock_exploit = MagicMock(spec=ExploitBaseClass)
     mock_exploit.exploit.return_value = True
-    mock_vuln.get_exploit_instance.return_value = mock_exploit
+    mock_vuln.get_module_instance.return_value = mock_exploit
 
     db = _make_db_with_vulns([mock_vuln, mock_vuln])
 
@@ -193,6 +195,8 @@ def test_attack_continues_with_autopwn():
     mock_vuln.cve_id = "CVE-2026-9999"
     mock_vuln.min_impacted_version = "1.0.0"
     mock_vuln.max_impacted_version = "1.10.0"
+    mock_exploit = MagicMock(spec=ExploitBaseClass)
+    mock_vuln.get_module_instance.return_value = mock_exploit
 
     db = _make_db_with_vulns([mock_vuln, mock_vuln])
 
@@ -434,7 +438,9 @@ class TestGetVulnerabilities:
             cve="cve-2026-9198",
         )
         assert result == ["v"]
-        db.search_vulnerabilities.assert_called_once_with(cve="cve-2026-9198")
+        db.search_vulnerabilities.assert_called_once_with(
+            cve="cve-2026-9198", module_type="exploit"
+        )
 
     def test_returns_retrieve_when_no_cve(self):
         db = self._make_db(vulns=["v1", "v2"])
@@ -470,6 +476,7 @@ def test_exploit_timeout_continues_to_next():
     mock_vuln.application = "langflow"
     mock_vuln.min_impacted_version = "1.0.0"
     mock_vuln.max_impacted_version = "2.0.0"
+    mock_vuln.get_module_instance.return_value = MagicMock(spec=ExploitBaseClass)
 
     db = MagicMock(spec=Database)
     db.retrieve_vulnerabilities.return_value = [mock_vuln]
@@ -498,6 +505,7 @@ def test_exploit_timeout_blocking_payload_reports_success(caplog):
     mock_vuln.application = "langflow"
     mock_vuln.min_impacted_version = "1.0.0"
     mock_vuln.max_impacted_version = "2.0.0"
+    mock_vuln.get_module_instance.return_value = MagicMock(spec=ExploitBaseClass)
 
     db = MagicMock(spec=Database)
     db.retrieve_vulnerabilities.return_value = [mock_vuln]
@@ -537,6 +545,7 @@ def test_exploit_timeout_non_blocking_payload_reports_skip(caplog):
     mock_vuln.application = "langflow"
     mock_vuln.min_impacted_version = "1.0.0"
     mock_vuln.max_impacted_version = "2.0.0"
+    mock_vuln.get_module_instance.return_value = MagicMock(spec=ExploitBaseClass)
 
     db = MagicMock(spec=Database)
     db.retrieve_vulnerabilities.return_value = [mock_vuln]
@@ -588,7 +597,9 @@ def test_credentials_detected_logs_warning():
 def test_attack_cve_flag_calls_search_vulnerabilities():
     runner = CliRunner()
     db = MagicMock(spec=Database)
-    db.search_vulnerabilities.return_value = []
+    mock_vuln = MagicMock()
+    mock_vuln.get_module_instance.return_value = MagicMock(spec=ExploitBaseClass)
+    db.search_vulnerabilities.return_value = [mock_vuln]
 
     with patch(
         "flowhound.cli.command.detect_target", return_value=("langflow", "1.0.0")
@@ -599,7 +610,9 @@ def test_attack_cve_flag_calls_search_vulnerabilities():
             obj=db,
         )
     assert result.exit_code == 0
-    db.search_vulnerabilities.assert_called_once_with(cve="cve-2026-9198")
+    db.search_vulnerabilities.assert_called_once_with(
+        cve="cve-2026-9198", module_type="exploit"
+    )
 
 
 def test_attack_invalid_cve_format_exits():
@@ -628,18 +641,29 @@ def test_attack_get_vulnerabilities_error_exits():
 # --- sniff vuln listing (line 267) ------------------------------------------
 
 
-def test_sniff_lists_exploit_modules():
+def test_sniff_lists_all_modules():
     runner = CliRunner()
-    mock_vuln = MagicMock()
-    mock_vuln.exploit_module = "flowhound.vulnerabilities.exploits.cve_2026_9198"
+    mock_exploit = MagicMock()
+    mock_exploit.module = "flowhound.vulnerabilities.exploits.langflow.cve_2026_9198"
+    mock_exploit.module_type = "exploit"
+    mock_auxiliary = MagicMock()
+    mock_auxiliary.module = "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_1177"
+    mock_auxiliary.module_type = "auxiliary"
     db = MagicMock(spec=Database)
-    db.retrieve_vulnerabilities.return_value = [mock_vuln]
+    db.retrieve_vulnerabilities.return_value = [mock_exploit, mock_auxiliary]
 
     with patch(
         "flowhound.cli.command.detect_target", return_value=("langflow", "1.0.0")
     ):
         result = runner.invoke(sniff, ["--url", "http://localhost:7860"], obj=db)
+
     assert result.exit_code == 0
+    db.retrieve_vulnerabilities.assert_called_once_with(
+        application="langflow",
+        target_version="1.0.0",
+        is_auth=True,
+        module_type=None,
+    )
 
 
 def test_sniff_get_vulnerabilities_error_exits():
@@ -652,3 +676,168 @@ def test_sniff_get_vulnerabilities_error_exits():
     ):
         result = runner.invoke(sniff, ["--url", "http://localhost:7860"], obj=db)
     assert result.exit_code != 0
+
+
+# --- CLI module type validation tests ---------------------------------------
+
+
+def test_attack_fails_gracefully_on_auxiliary_cve():
+    runner = CliRunner()
+    db = Database()
+
+    with patch("flowhound.cli.command.detect_target", return_value=("mlflow", "1.0.0")):
+        result = runner.invoke(
+            attack,
+            ["--url", "http://localhost:5000", "--cve", "CVE-2023-1177"],
+            obj=db,
+        )
+    assert result.exit_code != 0
+    assert "is not an exploit module" in result.output
+
+
+def test_scan_fails_gracefully_on_exploit_cve():
+    runner = CliRunner()
+    db = Database()
+
+    result = runner.invoke(
+        scan,
+        [
+            "--url",
+            "http://localhost:7860",
+            "--cve",
+            "CVE-2026-9198",
+        ],
+        obj=db,
+    )
+    assert result.exit_code != 0
+    assert "is not an auxiliary module" in result.output
+
+
+# ===========================================================================
+# _get_vulnerabilities — uncovered branches
+# ===========================================================================
+
+
+def test_get_vulnerabilities_cve_not_found_at_all_raises():
+    """When a CVE ID is not in the DB at all, a ClickException 'not found' is raised."""
+    runner = CliRunner()
+    db = MagicMock(spec=Database)
+    # Neither the typed nor the untyped search finds anything
+    db.search_vulnerabilities.return_value = []
+
+    with patch(
+        "flowhound.cli.command.detect_target", return_value=("langflow", "1.0.0")
+    ):
+        result = runner.invoke(
+            attack,
+            ["--url", "http://localhost:7860", "--cve", "CVE-2026-9999"],
+            obj=db,
+        )
+
+    assert result.exit_code != 0
+    assert "not found" in result.output
+
+
+def test_get_vulnerabilities_runtime_error_raises_click_exception():
+    """A RuntimeError from retrieve_vulnerabilities is wrapped in a ClickException."""
+    runner = CliRunner()
+    db = MagicMock(spec=Database)
+    db.retrieve_vulnerabilities.side_effect = RuntimeError("unexpected db failure")
+
+    with patch(
+        "flowhound.cli.command.detect_target", return_value=("langflow", "1.0.0")
+    ):
+        result = runner.invoke(attack, ["--url", "http://localhost:7860"], obj=db)
+
+    assert result.exit_code != 0
+    assert "Error retrieving exploits" in result.output
+
+
+# ===========================================================================
+# scan command — happy path
+# ===========================================================================
+
+
+def test_scan_executes_auxiliary_module():
+    """scan resolves an auxiliary module and calls _execute_auxiliary."""
+    runner = CliRunner()
+    mock_vuln = MagicMock()
+    mock_vuln.cve_id = "cve-2023-1177"
+
+    mock_module = MagicMock(spec=AuxiliaryBaseClass)
+    mock_vuln.get_module_instance.return_value = mock_module
+
+    db = MagicMock(spec=Database)
+    db.search_vulnerabilities.return_value = [mock_vuln]
+
+    with patch(
+        "flowhound.cli.command._execute_auxiliary", return_value=True
+    ) as mock_exec:
+        result = runner.invoke(
+            scan,
+            ["--url", "http://localhost:5000", "--cve", "CVE-2023-1177"],
+            obj=db,
+        )
+
+    assert result.exit_code == 0
+    mock_exec.assert_called_once()
+
+
+def test_scan_raises_when_module_is_not_auxiliary():
+    """scan raises a ClickException when get_module_instance returns an exploit."""
+    runner = CliRunner()
+    mock_vuln = MagicMock()
+    mock_vuln.cve_id = "cve-2026-9198"
+
+    # Return an exploit instance instead of an auxiliary
+    mock_module = MagicMock(spec=ExploitBaseClass)
+    mock_vuln.get_module_instance.return_value = mock_module
+
+    db = MagicMock(spec=Database)
+    db.search_vulnerabilities.return_value = [mock_vuln]
+
+    result = runner.invoke(
+        scan,
+        ["--url", "http://localhost:7860", "--cve", "CVE-2026-9198"],
+        obj=db,
+    )
+
+    assert result.exit_code != 0
+    assert "is not an auxiliary module" in result.output
+
+
+# ===========================================================================
+# _get_auxiliary_modules — uncovered branches
+# ===========================================================================
+
+
+def test_get_auxiliary_modules_cve_not_found_at_all_raises():
+    """When scan's CVE is absent from the DB entirely, 'not found' is raised."""
+    runner = CliRunner()
+    db = MagicMock(spec=Database)
+    db.search_vulnerabilities.return_value = []
+
+    result = runner.invoke(
+        scan,
+        ["--url", "http://localhost:5000", "--cve", "CVE-2023-9999"],
+        obj=db,
+    )
+
+    assert result.exit_code != 0
+    assert "not found" in result.output
+
+
+def test_get_auxiliary_modules_runtime_error_raises_click_exception():
+    """A RuntimeError from search_vulnerabilities is wrapped in a ClickException."""
+    runner = CliRunner()
+    db = MagicMock(spec=Database)
+    db.search_vulnerabilities.side_effect = RuntimeError("db exploded")
+
+    result = runner.invoke(
+        scan,
+        ["--url", "http://localhost:5000", "--cve", "CVE-2023-1177"],
+        obj=db,
+    )
+
+    assert result.exit_code != 0
+    assert "Error retrieving auxiliary module" in result.output

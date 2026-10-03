@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from flowhound.vulnerabilities.cve.cve import CVE
+from flowhound.vulnerabilities.cve.cve import CVE, ModuleType
 from flowhound.vulnerabilities.io.version_detection import (
     convert_tuple_to_version,
     convert_version_to_tuple,
@@ -14,8 +14,9 @@ _REQUIRED_FIELDS = {
     "cvss_severity",
     "min_impacted_version",
     "max_impacted_version",
-    "exploit_module",
-    "exploit_class",
+    "module",
+    "module_class",
+    "module_type",
     "auth_required",
 }
 
@@ -71,7 +72,11 @@ class Database:
         return records
 
     def retrieve_vulnerabilities(
-        self, application: str, target_version: str, is_auth: bool
+        self,
+        application: str,
+        target_version: str,
+        is_auth: bool,
+        module_type: ModuleType | None = ModuleType.EXPLOIT,
     ):
         """
         Retrieve a list of CVEs impacting a given application instance
@@ -86,10 +91,13 @@ class Database:
         is_auth : bool
             Represents whether application credentials
             were supplied by the user.
+        module_type : ModuleType | None
+            Filter by module type (e.g. ModuleType.EXPLOIT or ModuleType.AUXILIARY).
+            Pass None to retrieve all module types.
 
         Returns
         -------
-        List of CVE objects returned based on `application` and `target_version`.
+        List of CVE objects returned based on `application`, `target_version`, and `module_type`.
         """
         try:
             version_formatted = convert_version_to_tuple(target_version=target_version)
@@ -98,6 +106,8 @@ class Database:
 
         results = []
         for record in self.records:
+            if module_type is not None and record["module_type"] != module_type:
+                continue
             if record["application"].lower() != application.lower():
                 continue
             if not (is_auth or not record["auth_required"]):
@@ -112,7 +122,9 @@ class Database:
 
         return [CVE(**record) for record in results]
 
-    def search_vulnerabilities(self, cve: str) -> list:
+    def search_vulnerabilities(
+        self, cve: str, module_type: ModuleType | None = None
+    ) -> list:
         """
         Retrieves a list of CVEs based on a defined list of
         criteria to pull their corresponding exploit modules.
@@ -121,14 +133,20 @@ class Database:
         ----------
         cve : str
             CVE ID
+        module_type : str | None
+            Optional filter by module type (e.g. "exploit" or "auxiliary").
 
         Returns
         -------
         A list of CVE objects
         """
+        records = self.records
+        if module_type is not None:
+            records = [r for r in records if r["module_type"] == module_type]
+
         if not cve:
-            return [CVE(**record) for record in self.records]
+            return [CVE(**record) for record in records]
         results = [
-            record for record in self.records if record["cve_id"].lower() == cve.lower()
+            record for record in records if record["cve_id"].lower() == cve.lower()
         ]
         return [CVE(**record) for record in results]
