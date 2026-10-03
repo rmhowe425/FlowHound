@@ -74,6 +74,33 @@ def test_emit_exploit_logger_uses_green():
     assert any(call.get("fg") == "green" for call in styled_calls)
 
 
+def test_emit_auxiliary_logger_uses_green():
+    handler = ClickLogHandler()
+    handler.setFormatter(logging.Formatter("%(message)s"))
+
+    record = logging.LogRecord(
+        name="flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_1177",
+        level=logging.INFO,
+        pathname="",
+        lineno=0,
+        msg="auxiliary info",
+        args=(),
+        exc_info=None,
+    )
+
+    styled_calls = []
+    with (
+        patch(
+            "flowhound.cli.message_format.style",
+            side_effect=lambda s, **kw: styled_calls.append(kw) or s,
+        ),
+        patch("flowhound.cli.message_format.echo"),
+    ):
+        handler.emit(record)
+
+    assert any(call.get("fg") == "green" for call in styled_calls)
+
+
 def test_emit_error_writes_to_stderr():
     handler = ClickLogHandler()
     handler.setFormatter(logging.Formatter("%(message)s"))

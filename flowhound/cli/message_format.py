@@ -21,6 +21,7 @@ class ClickLogHandler(logging.Handler):
     }
 
     EXPLOIT_LOGGER_PREFIX = "flowhound.vulnerabilities.exploits"
+    AUXILIARY_LOGGER_PREFIX = "flowhound.vulnerabilities.auxiliary"
 
     def emit(self, record: logging.LogRecord):
         try:
@@ -29,7 +30,7 @@ class ClickLogHandler(logging.Handler):
                 record.levelno, {"fg": "blue", "prefix": "[+] "}
             ).copy()
             if record.levelno == logging.INFO and record.name.startswith(
-                self.EXPLOIT_LOGGER_PREFIX
+                (self.EXPLOIT_LOGGER_PREFIX, self.AUXILIARY_LOGGER_PREFIX)
             ):
                 config["fg"] = "green"
             prefix = config.pop("prefix", "")

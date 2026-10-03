@@ -5,17 +5,18 @@ from unittest.mock import MagicMock, patch
 from flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_1177 import Auxiliary
 
 _BASE_URL = "http://localhost:5000"
-_AUTH_HEADERS = {
-    "Authorization": "Basic YWRtaW46c2VjcmV0",
-    "Content-Type": "application/json",
-}
 
 
-def _mock_auth_get(status: int = 200):
-    """Return a mock GET response used by MLflowClient.authenticate."""
-    resp = MagicMock()
-    resp.status_code = status
-    return resp
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _make_response(status: int, text: str) -> MagicMock:
+    r = MagicMock()
+    r.status_code = status
+    r.text = text
+    return r
 
 
 # ---------------------------------------------------------------------------
@@ -24,105 +25,211 @@ def _mock_auth_get(status: int = 200):
 
 
 class TestTriggerVuln:
-    def test_returns_status_and_body(self):
-        mock_resp = MagicMock()
-        mock_resp.status_code = 200
-        mock_resp.text = "file content"
+    def test_returns_file_content_on_success(self):
+        """All three steps succeed — returns (200, file_content)."""
+        ok = _make_response(200, "")
+        file_resp = _make_response(200, "root:x:0:0:root:/root:/bin/bash\n")
 
         exploit = Auxiliary()
-        with patch(
-            "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_1177.get",
-            return_value=mock_resp,
+        with (
+            patch("requests.post", return_value=ok),
+            patch("requests.get", return_value=file_resp),
         ):
             result = exploit.trigger_vuln(
-                base_url=_BASE_URL, f_path="../../../../etc/passwd"
+                base_url=_BASE_URL,
+                model_name="test-model",
+                file_dir="/etc",
+                filename="passwd",
             )
 
-        assert result == (200, "file content")
+        assert result == (200, "root:x:0:0:root:/root:/bin/bash\n")
 
-    def test_network_error_returns_none(self):
+    def test_source_uri_uses_file_scheme(self):
+        """The model-version create POST uses a file:// source URI."""
+        ok = _make_response(200, "")
+        file_resp = _make_response(200, "content")
+
         exploit = Auxiliary()
-        with patch(
-            "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_1177.get",
-            side_effect=ConnectionError("refused"),
+        post_calls = []
+        with (
+            patch(
+                "requests.post",
+                side_effect=lambda *a, **kw: (post_calls.append(kw), ok)[1],
+            ),
+            patch("requests.get", return_value=file_resp),
+        ):
+            exploit.trigger_vuln(
+                base_url=_BASE_URL,
+                model_name="m",
+                file_dir="/etc",
+                filename="passwd",
+            )
+
+        # Second POST (model-version create) must have source = file:///etc/
+        version_payload = post_calls[1]["json"]
+        assert version_payload["source"] == "file:///etc/"
+
+    def test_returns_early_on_model_create_failure(self):
+        """If model creation fails, stops and returns the failure response."""
+        fail = _make_response(403, '{"error": "forbidden"}')
+
+        exploit = Auxiliary()
+        with (
+            patch("requests.post", return_value=fail),
+            patch("requests.get") as mock_get,
         ):
             result = exploit.trigger_vuln(
-                base_url=_BASE_URL, f_path="../../../../etc/passwd"
+                base_url=_BASE_URL,
+                model_name="m",
+                file_dir="/etc",
+                filename="passwd",
+            )
+
+        assert result == (403, '{"error": "forbidden"}')
+        mock_get.assert_not_called()
+
+    def test_returns_none_on_network_error(self):
+        """A network error on the first POST returns None."""
+        exploit = Auxiliary()
+        with patch("requests.post", side_effect=ConnectionError("refused")):
+            result = exploit.trigger_vuln(
+                base_url=_BASE_URL,
+                model_name="m",
+                file_dir="/etc",
+                filename="passwd",
             )
 
         assert result is None
 
 
 # ---------------------------------------------------------------------------
-# exploit
+# run
 # ---------------------------------------------------------------------------
 
 
 class TestRun:
-    def test_successful_traversal(self):
-        """A 200 response with body signals a successful file read."""
-        traversal_resp = MagicMock()
-        traversal_resp.status_code = 200
-        traversal_resp.text = "root:x:0:0:root:/root:/bin/bash\n"
+    def _setup_mocks(self, file_content: str, file_status: int = 200):
+        ok = _make_response(200, "{}")
+        file_resp = _make_response(file_status, file_content)
+        return ok, file_resp
+
+    def test_successful_exploit(self):
+        ok, file_resp = self._setup_mocks("root:x:0:0:root:/root:/bin/bash\n")
 
         exploit = Auxiliary()
-        with patch(
-            "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_1177.get",
-            return_value=traversal_resp,
+        with (
+            patch("requests.post", return_value=ok),
+            patch("requests.get", return_value=file_resp),
         ):
-            result = exploit.run(
-                base_url=_BASE_URL, username="admin", password="secret"
-            )
+            result = exploit.run(base_url=_BASE_URL, username="", password="")
 
         assert result is True
 
-    def test_patched_server_returns_false(self):
-        """All 404 responses (patched server) result in False."""
-        not_found = MagicMock()
-        not_found.status_code = 404
-        not_found.text = ""
+    def test_default_path_is_etc_passwd(self):
+        """When no f_path is given, /etc/passwd is targeted."""
+        ok = _make_response(200, "{}")
+        file_resp = _make_response(200, "root:x:0:0")
 
+        get_calls = []
         exploit = Auxiliary()
-        with patch(
-            "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_1177.get",
-            return_value=not_found,
+        with (
+            patch("requests.post", return_value=ok),
+            patch(
+                "requests.get",
+                side_effect=lambda *a, **kw: (get_calls.append(kw), file_resp)[1],
+            ),
         ):
-            result = exploit.run(base_url=_BASE_URL, username="", password="")
+            exploit.run(base_url=_BASE_URL, username="", password="")
 
-        assert result is False
+        params = get_calls[0]["params"]
+        assert params["path"] == "passwd"
 
-    def test_network_error_skips_target(self):
-        """A network error on every probe returns False without raising."""
+    def test_custom_f_path_splits_correctly(self):
+        """f_path='/proc/version' → file_dir='/proc', filename='version'."""
+        ok = _make_response(200, "{}")
+        file_resp = _make_response(200, "Linux version 5.15")
+
+        get_calls = []
+        post_calls = []
         exploit = Auxiliary()
-        with patch(
-            "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_1177.get",
-            side_effect=ConnectionError("refused"),
+        with (
+            patch(
+                "requests.post",
+                side_effect=lambda *a, **kw: (post_calls.append(kw), ok)[1],
+            ),
+            patch(
+                "requests.get",
+                side_effect=lambda *a, **kw: (get_calls.append(kw), file_resp)[1],
+            ),
         ):
-            result = exploit.run(base_url=_BASE_URL, username="", password="")
-
-        assert result is False
-
-    def test_uses_custom_f_path(self):
-        """When f_path is provided it is used as the sole traversal target."""
-        traversal_resp = MagicMock()
-        traversal_resp.status_code = 200
-        traversal_resp.text = "SECRET_KEY=abc123"
-
-        exploit = Auxiliary()
-        with patch(
-            "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_1177.get",
-            return_value=traversal_resp,
-        ) as mock_get:
             result = exploit.run(
                 base_url=_BASE_URL,
                 username="",
                 password="",
-                f_path="../../../../app/.env",
+                f_path="/proc/version",
             )
 
         assert result is True
-        called_params = mock_get.call_args_list
-        assert len(called_params) == 1
-        assert (
-            called_params[0].kwargs["params"]["artifact_uri"] == "../../../../app/.env"
-        )
+        # source URI must point to /proc/
+        version_payload = post_calls[1]["json"]
+        assert version_payload["source"] == "file:///proc/"
+        # artifact path must be 'version'
+        assert get_calls[0]["params"]["path"] == "version"
+
+    def test_mlflow_error_envelope_is_not_success(self):
+        """A 200 response with '{}' (MLflow empty envelope) is treated as failure."""
+        ok = _make_response(200, "{}")
+
+        exploit = Auxiliary()
+        with (
+            patch("requests.post", return_value=ok),
+            patch("requests.get", return_value=_make_response(200, "{}")),
+        ):
+            result = exploit.run(base_url=_BASE_URL, username="", password="")
+
+        assert result is False
+
+    def test_empty_body_is_success(self):
+        """A 200 response with an empty body is a successful read (virtual/empty file)."""
+        ok = _make_response(200, "{}")
+
+        exploit = Auxiliary()
+        with (
+            patch("requests.post", return_value=ok),
+            patch("requests.get", return_value=_make_response(200, "")),
+        ):
+            result = exploit.run(base_url=_BASE_URL, username="", password="")
+
+        assert result is True
+
+    def test_network_error_returns_false(self):
+        """A network error on any step returns False without raising."""
+        exploit = Auxiliary()
+        with patch("requests.post", side_effect=ConnectionError("refused")):
+            result = exploit.run(base_url=_BASE_URL, username="", password="")
+
+        assert result is False
+
+    def test_model_name_is_unique_per_call(self):
+        """Each run() call generates a different model name."""
+        ok = _make_response(200, "{}")
+        file_resp = _make_response(200, "content")
+
+        names = []
+
+        def capture_post(*a, **kw):
+            payload = kw.get("json", {})
+            if "name" in payload and "source" not in payload:
+                names.append(payload["name"])
+            return ok
+
+        exploit = Auxiliary()
+        with (
+            patch("requests.post", side_effect=capture_post),
+            patch("requests.get", return_value=file_resp),
+        ):
+            exploit.run(base_url=_BASE_URL, username="", password="")
+            exploit.run(base_url=_BASE_URL, username="", password="")
+
+        assert len(names) == 2
+        assert names[0] != names[1]
