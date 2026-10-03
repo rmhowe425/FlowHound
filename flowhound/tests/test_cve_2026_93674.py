@@ -1,11 +1,11 @@
-"""Tests for flowhound.vulnerabilities.exploits.cve_2026_93674."""
+"""Tests for flowhound.vulnerabilities.exploits.langflow.cve_2026_93674."""
 
 from unittest.mock import MagicMock, patch
 
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from flowhound.vulnerabilities.exploits.cve_2026_93674 import Exploit
+from flowhound.vulnerabilities.exploits.langflow.cve_2026_93674 import Exploit
 
 _BASE_URL = "http://localhost:7860"
 _AUTH_HEADERS = {
@@ -118,7 +118,7 @@ class TestSaveCommand:
         mock_resp = _mock_resp(200)
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_93674.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_93674.post",
             return_value=mock_resp,
         ) as mock_post:
             exploit.save_command(
@@ -134,7 +134,7 @@ class TestSaveCommand:
     def test_sends_command_and_args_in_body(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_93674.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_93674.post",
             return_value=_mock_resp(200),
         ) as mock_post:
             exploit.save_command(
@@ -152,7 +152,7 @@ class TestSaveCommand:
         mock_resp = _mock_resp(200)
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_93674.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_93674.post",
             return_value=mock_resp,
         ):
             result = exploit.save_command(
@@ -167,7 +167,7 @@ class TestSaveCommand:
     def test_network_error_returns_none(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_93674.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_93674.post",
             side_effect=ConnectionError("refused"),
         ):
             result = exploit.save_command(
@@ -183,7 +183,7 @@ class TestSaveCommand:
         proxies = {"http": "http://127.0.0.1:8080"}
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_93674.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_93674.post",
             return_value=_mock_resp(200),
         ) as mock_post:
             exploit.save_command(
@@ -206,7 +206,7 @@ class TestTriggerVuln:
     def test_gets_correct_endpoint(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_93674.get",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_93674.get",
             return_value=_mock_resp(200, []),
         ) as mock_get:
             exploit.trigger_vuln(base_url=_BASE_URL, auth=_AUTH_HEADERS)
@@ -219,7 +219,7 @@ class TestTriggerVuln:
         mock_resp = _mock_resp(200, [])
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_93674.get",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_93674.get",
             return_value=mock_resp,
         ):
             assert (
@@ -230,7 +230,7 @@ class TestTriggerVuln:
     def test_network_error_returns_none(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_93674.get",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_93674.get",
             side_effect=ConnectionError("refused"),
         ):
             assert exploit.trigger_vuln(base_url=_BASE_URL, auth=_AUTH_HEADERS) is None
@@ -245,7 +245,7 @@ class TestDeleteServer:
     def test_sends_delete_to_correct_endpoint(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_93674.delete",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_93674.delete",
         ) as mock_delete:
             exploit._delete_server(
                 base_url=_BASE_URL, auth=_AUTH_HEADERS, server_name="deadbeef"
@@ -257,7 +257,7 @@ class TestDeleteServer:
     def test_network_error_does_not_raise(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_93674.delete",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_93674.delete",
             side_effect=ConnectionError("refused"),
         ):
             exploit._delete_server(

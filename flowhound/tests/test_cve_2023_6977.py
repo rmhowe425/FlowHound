@@ -1,8 +1,8 @@
-"""Tests for flowhound.vulnerabilities.exploits.cve_2023_6977."""
+"""Tests for flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_6977."""
 
 from unittest.mock import MagicMock, patch
 
-from flowhound.vulnerabilities.exploits.cve_2023_6977 import Exploit
+from flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_6977 import Auxiliary
 
 _BASE_URL = "http://localhost:5000"
 _AUTH_HEADERS = {
@@ -60,9 +60,9 @@ class TestTriggerVuln:
         mock_resp.status_code = 200
         mock_resp.text = "file body"
 
-        exploit = Exploit()
+        exploit = Auxiliary()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2023_6977.get",
+            "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_6977.get",
             return_value=mock_resp,
         ):
             result = exploit.trigger_vuln(
@@ -76,9 +76,9 @@ class TestTriggerVuln:
         assert result == (200, "file body")
 
     def test_network_error_returns_none(self):
-        exploit = Exploit()
+        exploit = Auxiliary()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2023_6977.get",
+            "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_6977.get",
             side_effect=ConnectionError("refused"),
         ):
             result = exploit.trigger_vuln(
@@ -99,9 +99,9 @@ class TestTriggerVuln:
 
 class TestListRegisteredModels:
     def test_network_error_returns_empty(self):
-        exploit = Exploit()
+        exploit = Auxiliary()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2023_6977.get",
+            "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_6977.get",
             side_effect=ConnectionError("refused"),
         ):
             assert (
@@ -115,9 +115,9 @@ class TestListRegisteredModels:
         resp = MagicMock()
         resp.status_code = 403
         resp.json.return_value = {"error": "forbidden"}
-        exploit = Exploit()
+        exploit = Auxiliary()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2023_6977.get",
+            "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_6977.get",
             return_value=resp,
         ):
             assert (
@@ -133,9 +133,9 @@ class TestListRegisteredModels:
         resp.json.return_value = {
             "registered_models": [{"name": "valid"}, {}, {"name": ""}]
         }
-        exploit = Exploit()
+        exploit = Auxiliary()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2023_6977.get",
+            "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_6977.get",
             return_value=resp,
         ):
             assert exploit._list_registered_models(
@@ -150,9 +150,9 @@ class TestListRegisteredModels:
 
 class TestListModelVersions:
     def test_network_error_returns_empty(self):
-        exploit = Exploit()
+        exploit = Auxiliary()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2023_6977.get",
+            "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_6977.get",
             side_effect=ConnectionError("refused"),
         ):
             assert (
@@ -166,9 +166,9 @@ class TestListModelVersions:
         resp = MagicMock()
         resp.status_code = 404
         resp.json.return_value = {"error": "not found"}
-        exploit = Exploit()
+        exploit = Auxiliary()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2023_6977.get",
+            "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_6977.get",
             return_value=resp,
         ):
             assert (
@@ -184,9 +184,9 @@ class TestListModelVersions:
         resp.json.return_value = {
             "model_versions": [{"version": "1"}, {}, {"version": ""}]
         }
-        exploit = Exploit()
+        exploit = Auxiliary()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2023_6977.get",
+            "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_6977.get",
             return_value=resp,
         ):
             assert exploit._list_model_versions(
@@ -199,25 +199,25 @@ class TestListModelVersions:
 # ---------------------------------------------------------------------------
 
 
-class TestExploit:
+class TestRun:
     def test_successful_traversal(self):
         auth_resp = _make_auth_resp()
         models_resp = _make_models_resp()
         versions_resp = _make_versions_resp()
         traversal_resp = _make_traversal_resp(200, "root:x:0:0:root:/root:/bin/bash")
 
-        exploit = Exploit()
+        exploit = Auxiliary()
         with (
             patch(
                 "flowhound.vulnerabilities.clients.mlflow.get",
                 side_effect=[auth_resp, models_resp, versions_resp, traversal_resp],
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2023_6977.get",
+                "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_6977.get",
                 side_effect=[models_resp, versions_resp, traversal_resp],
             ),
         ):
-            result = exploit.exploit(
+            result = exploit.run(
                 base_url=_BASE_URL, username="admin", password="secret"
             )
 
@@ -229,29 +229,29 @@ class TestExploit:
         no_models_resp.status_code = 200
         no_models_resp.json.return_value = {"registered_models": []}
 
-        exploit = Exploit()
+        exploit = Auxiliary()
         with (
             patch(
                 "flowhound.vulnerabilities.clients.mlflow.get", return_value=auth_resp
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2023_6977.get",
+                "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_6977.get",
                 return_value=no_models_resp,
             ),
         ):
-            result = exploit.exploit(
+            result = exploit.run(
                 base_url=_BASE_URL, username="admin", password="secret"
             )
 
         assert result is False
 
     def test_auth_failure_returns_false(self):
-        exploit = Exploit()
+        exploit = Auxiliary()
         with patch(
             "flowhound.vulnerabilities.clients.mlflow.get",
             return_value=_mock_auth_get(401),
         ):
-            result = exploit.exploit(
+            result = exploit.run(
                 base_url=_BASE_URL, username="admin", password="wrongpass"
             )
 
@@ -264,17 +264,17 @@ class TestExploit:
         versions_resp = _make_versions_resp()
         denied = _make_traversal_resp(status=403, text="")
 
-        exploit = Exploit()
+        exploit = Auxiliary()
         with (
             patch(
                 "flowhound.vulnerabilities.clients.mlflow.get", return_value=auth_resp
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2023_6977.get",
+                "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_6977.get",
                 side_effect=[models_resp, versions_resp] + [denied] * 10,
             ),
         ):
-            result = exploit.exploit(
+            result = exploit.run(
                 base_url=_BASE_URL, username="admin", password="secret"
             )
 
@@ -298,18 +298,18 @@ class TestExploit:
         traversal_resp.status_code = 200
         traversal_resp.text = "root:x:0:0"
 
-        exploit = Exploit()
+        exploit = Auxiliary()
         with (
             patch(
                 "flowhound.vulnerabilities.clients.mlflow.get", return_value=auth_resp
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2023_6977.get",
+                "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_6977.get",
                 side_effect=[models_resp, no_ver_resp, ver_resp, traversal_resp],
             ),
         ):
             assert (
-                exploit.exploit(base_url=_BASE_URL, username="admin", password="secret")
+                exploit.run(base_url=_BASE_URL, username="admin", password="secret")
                 is True
             )
 
@@ -326,13 +326,13 @@ class TestExploit:
         traversal_ok.status_code = 200
         traversal_ok.text = "uid=0"
 
-        exploit = Exploit()
+        exploit = Auxiliary()
         with (
             patch(
                 "flowhound.vulnerabilities.clients.mlflow.get", return_value=auth_resp
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2023_6977.get",
+                "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_6977.get",
                 side_effect=[
                     models_resp,
                     ver_resp,
@@ -342,6 +342,6 @@ class TestExploit:
             ),
         ):
             assert (
-                exploit.exploit(base_url=_BASE_URL, username="admin", password="secret")
+                exploit.run(base_url=_BASE_URL, username="admin", password="secret")
                 is True
             )

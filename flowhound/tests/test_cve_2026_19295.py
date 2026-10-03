@@ -1,9 +1,9 @@
-"""Tests for flowhound.vulnerabilities.exploits.cve_2026_19295."""
+"""Tests for flowhound.vulnerabilities.exploits.langflow.cve_2026_19295."""
 
 import json as _json
 from unittest.mock import MagicMock, patch
 
-from flowhound.vulnerabilities.exploits.cve_2026_19295 import Exploit
+from flowhound.vulnerabilities.exploits.langflow.cve_2026_19295 import Exploit
 
 _BASE_URL = "http://localhost:7860"
 _AUTH_HEADERS = {
@@ -101,9 +101,9 @@ class TestPollEvents:
         }
         exploit = Exploit()
         with (
-            patch("flowhound.vulnerabilities.exploits.cve_2026_19295.sleep"),
+            patch("flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.sleep"),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_19295.get",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.get",
                 return_value=_stream_ctx(event),
             ),
         ):
@@ -117,9 +117,9 @@ class TestPollEvents:
     def test_returns_error_text_on_error_event(self):
         exploit = Exploit()
         with (
-            patch("flowhound.vulnerabilities.exploits.cve_2026_19295.sleep"),
+            patch("flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.sleep"),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_19295.get",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.get",
                 return_value=_stream_ctx(
                     {"event": "error", "data": {"text": "failed"}}
                 ),
@@ -135,9 +135,9 @@ class TestPollEvents:
     def test_blocking_returns_sentinel_when_no_output(self):
         exploit = Exploit()
         with (
-            patch("flowhound.vulnerabilities.exploits.cve_2026_19295.sleep"),
+            patch("flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.sleep"),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_19295.get",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.get",
                 return_value=_empty_stream_ctx(),
             ),
         ):
@@ -154,12 +154,158 @@ class TestPollEvents:
     def test_non_blocking_returns_none_when_no_output(self):
         exploit = Exploit()
         with (
-            patch("flowhound.vulnerabilities.exploits.cve_2026_19295.sleep"),
+            patch("flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.sleep"),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_19295.get",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.get",
                 return_value=_empty_stream_ctx(),
             ),
         ):
+            assert (
+                exploit._poll_events(
+                    base_url=_BASE_URL,
+                    auth=_AUTH_HEADERS,
+                    job_id="job-1",
+                    blocking=False,
+                )
+                is None
+            )
+
+    def test_skips_empty_lines_in_stream(self):
+        """Empty lines in the SSE stream are silently skipped."""
+        import json as _json
+
+        event = {
+            "event": "end_vertex",
+            "data": {
+                "build_data": {
+                    "data": {"outputs": {"out": {"message": {"output": "uid=0"}}}}
+                }
+            },
+        }
+        ctx = MagicMock()
+        ctx.__enter__ = MagicMock(return_value=ctx)
+        ctx.__exit__ = MagicMock(return_value=False)
+        # Mix empty strings (skipped) with a valid event line
+        ctx.iter_lines.return_value = iter(["", "   ", _json.dumps(event)])
+        exploit = Exploit()
+        with (
+            patch("flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.sleep"),
+            patch(
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.get",
+                return_value=ctx,
+            ),
+        ):
+            assert (
+                exploit._poll_events(
+                    base_url=_BASE_URL, auth=_AUTH_HEADERS, job_id="job-1"
+                )
+                == "uid=0"
+            )
+
+    def test_skips_non_json_lines_in_stream(self):
+        """Lines that cannot be decoded as JSON are silently skipped."""
+        import json as _json
+
+        event = {
+            "event": "end_vertex",
+            "data": {
+                "build_data": {
+                    "data": {"outputs": {"out": {"message": {"output": "uid=0"}}}}
+                }
+            },
+        }
+        ctx = MagicMock()
+        ctx.__enter__ = MagicMock(return_value=ctx)
+        ctx.__exit__ = MagicMock(return_value=False)
+        ctx.iter_lines.return_value = iter(["not json at all", _json.dumps(event)])
+        exploit = Exploit()
+        with (
+            patch("flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.sleep"),
+            patch(
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.get",
+                return_value=ctx,
+            ),
+        ):
+            assert (
+                exploit._poll_events(
+                    base_url=_BASE_URL, auth=_AUTH_HEADERS, job_id="job-1"
+                )
+                == "uid=0"
+            )
+
+    def test_skips_event_with_non_dict_data(self):
+        """Events whose 'data' field is not a dict are silently skipped."""
+        import json as _json
+
+        events = [
+            {"event": "some_event", "data": "a plain string"},
+            {"event": "end", "data": {}},
+        ]
+        ctx = MagicMock()
+        ctx.__enter__ = MagicMock(return_value=ctx)
+        ctx.__exit__ = MagicMock(return_value=False)
+        ctx.iter_lines.return_value = iter([_json.dumps(e) for e in events])
+        exploit = Exploit()
+        with (
+            patch("flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.sleep"),
+            patch(
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.get",
+                return_value=ctx,
+            ),
+        ):
+            # No output found, non-blocking → returns None
+            assert (
+                exploit._poll_events(
+                    base_url=_BASE_URL,
+                    auth=_AUTH_HEADERS,
+                    job_id="job-1",
+                    blocking=False,
+                )
+                is None
+            )
+
+    def test_end_vertex_with_missing_keys_does_not_raise(self):
+        """KeyError inside end_vertex output parsing is silently swallowed."""
+        import json as _json
+
+        # end_vertex with no 'build_data' key — triggers the KeyError/TypeError pass
+        events = [
+            {"event": "end_vertex", "data": {}},
+            {"event": "end", "data": {}},
+        ]
+        ctx = MagicMock()
+        ctx.__enter__ = MagicMock(return_value=ctx)
+        ctx.__exit__ = MagicMock(return_value=False)
+        ctx.iter_lines.return_value = iter([_json.dumps(e) for e in events])
+        exploit = Exploit()
+        with (
+            patch("flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.sleep"),
+            patch(
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.get",
+                return_value=ctx,
+            ),
+        ):
+            assert (
+                exploit._poll_events(
+                    base_url=_BASE_URL,
+                    auth=_AUTH_HEADERS,
+                    job_id="job-1",
+                    blocking=False,
+                )
+                is None
+            )
+
+    def test_stream_exception_does_not_raise(self):
+        """An exception raised during streaming is silently swallowed."""
+        exploit = Exploit()
+        with (
+            patch("flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.sleep"),
+            patch(
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.get",
+                side_effect=ConnectionError("refused"),
+            ),
+        ):
+            # Non-blocking with no output → None
             assert (
                 exploit._poll_events(
                     base_url=_BASE_URL,
@@ -180,7 +326,7 @@ class TestSaveFlow:
     def test_returns_id_on_201(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_19295.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.post",
             return_value=_mock_resp(201, {"id": "flow-1"}),
         ):
             assert (
@@ -191,7 +337,7 @@ class TestSaveFlow:
     def test_returns_none_on_bad_status(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_19295.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.post",
             return_value=_mock_resp(400, {"error": "bad"}),
         ):
             assert (
@@ -202,7 +348,7 @@ class TestSaveFlow:
     def test_network_error_returns_none(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_19295.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.post",
             side_effect=ConnectionError("refused"),
         ):
             assert (
@@ -220,7 +366,7 @@ class TestTriggerVuln:
     def test_non_200_returns_none(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_19295.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.post",
             return_value=_mock_resp(403, {}),
         ):
             assert (
@@ -233,7 +379,7 @@ class TestTriggerVuln:
     def test_network_error_returns_none(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_19295.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.post",
             side_effect=ConnectionError("refused"),
         ):
             assert (
@@ -253,7 +399,7 @@ class TestDeleteFlow:
     def test_success(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_19295.delete",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.delete",
             return_value=_mock_resp(200),
         ):
             exploit.delete_flow(
@@ -263,7 +409,7 @@ class TestDeleteFlow:
     def test_network_error_does_not_raise(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_19295.delete",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.delete",
             side_effect=ConnectionError("refused"),
         ):
             exploit.delete_flow(
@@ -306,7 +452,7 @@ class TestExploit:
                 return_value=_mock_auth_post(),
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_19295.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.post",
                 return_value=_mock_resp(400, {"error": "bad"}),
             ),
         ):
@@ -327,11 +473,11 @@ class TestExploit:
                 return_value=_mock_auth_post(),
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_19295.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.post",
                 side_effect=[_mock_resp(201, {"id": "flow-1"}), _mock_resp(403, {})],
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_19295.delete",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.delete",
                 return_value=_mock_resp(200),
             ),
         ):
@@ -360,19 +506,19 @@ class TestExploit:
                 return_value=_mock_auth_post(),
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_19295.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.post",
                 side_effect=[
                     _mock_resp(201, {"id": "flow-1"}),
                     _mock_resp(200, {"job_id": "job-1"}),
                 ],
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_19295.get",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.get",
                 return_value=_stream_ctx(event),
             ),
-            patch("flowhound.vulnerabilities.exploits.cve_2026_19295.sleep"),
+            patch("flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.sleep"),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_19295.delete",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.delete",
                 return_value=_mock_resp(200),
             ),
         ):

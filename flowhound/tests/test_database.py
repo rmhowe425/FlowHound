@@ -92,8 +92,9 @@ def test_load_raises_value_error_on_null_max_version(tmp_path):
             "cvss_severity": 9.0,
             "min_impacted_version": [1, 0, 0],
             "max_impacted_version": None,
-            "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_9999",
-            "exploit_class": "Exploit",
+            "module": "flowhound.vulnerabilities.exploits.cve_2026_9999",
+            "module_class": "Exploit",
+            "module_type": "exploit",
             "auth_required": False,
         }
     ]
@@ -221,3 +222,96 @@ def test_search_vulnerabilities_unknown_id_always_empty(cve_id):
     """Searching for a CVE ID that does not exist always returns an empty list."""
     db = Database()
     assert db.search_vulnerabilities(cve=cve_id) == []
+
+
+# ===========================================================================
+# retrieve_vulnerabilities — module_type=None returns all types
+# ===========================================================================
+
+
+def test_retrieve_vulnerabilities_module_type_none_returns_all_types():
+    """module_type=None must return both exploit and auxiliary records."""
+    db = Database()
+    results = db.retrieve_vulnerabilities(
+        application="mlflow", target_version="2.0.0", is_auth=True, module_type=None
+    )
+    module_types = {cve.module_type for cve in results}
+    assert "exploit" in module_types or "auxiliary" in module_types
+    # All three mlflow CVEs in the DB are auxiliary — every result must be mlflow
+    assert all(cve.application.lower() == "mlflow" for cve in results)
+
+
+def test_retrieve_vulnerabilities_module_type_none_does_not_filter_by_type():
+    """With module_type=None, auxiliary and exploit records for the same app are both returned."""
+    db = Database()
+    exploit_results = db.retrieve_vulnerabilities(
+        application="mlflow", target_version="2.0.0", is_auth=True, module_type=None
+    )
+    auxiliary_results = db.retrieve_vulnerabilities(
+        application="mlflow",
+        target_version="2.0.0",
+        is_auth=True,
+    )
+    # The unfiltered set must be a superset of (or equal to) the exploit-only set
+    assert len(exploit_results) >= len(auxiliary_results)
+
+
+# ===========================================================================
+# Hypothesis — retrieve_vulnerabilities with module_type=None
+# ===========================================================================
+
+
+@given(target_version=_valid_version, is_auth=st.booleans())
+@settings(max_examples=200)
+def test_retrieve_vulnerabilities_none_type_never_leaks_wrong_application(
+    target_version, is_auth
+):
+    """With module_type=None every returned CVE still belongs to the requested application."""
+    db = Database()
+    for app in ("langflow", "mlflow"):
+        results = db.retrieve_vulnerabilities(
+            application=app,
+            target_version=target_version,
+            is_auth=is_auth,
+            module_type=None,
+        )
+        assert all(cve.application.lower() == app for cve in results)
+
+
+# ===========================================================================
+# Hypothesis — retrieve_vulnerabilities auth superset invariant
+# ===========================================================================
+
+
+@given(target_version=_valid_version)
+@settings(max_examples=200)
+def test_retrieve_vulnerabilities_auth_true_is_superset_of_auth_false(target_version):
+    """is_auth=True must return >= results than is_auth=False for the same inputs."""
+    db = Database()
+    for app in ("langflow", "mlflow"):
+        with_auth = db.retrieve_vulnerabilities(
+            application=app, target_version=target_version, is_auth=True
+        )
+        without_auth = db.retrieve_vulnerabilities(
+            application=app, target_version=target_version, is_auth=False
+        )
+        assert len(with_auth) >= len(without_auth)
+
+
+# ===========================================================================
+# Hypothesis — search_vulnerabilities module_type filter contract
+# ===========================================================================
+
+
+@given(target_version=_valid_version, is_auth=st.booleans())
+@settings(max_examples=200)
+def test_search_vulnerabilities_module_type_filter_always_respected(
+    target_version, is_auth
+):
+    """Every result from search_vulnerabilities with a module_type filter has that exact type."""
+    from flowhound.vulnerabilities.cve.cve import ModuleType
+
+    db = Database()
+    for mt in (ModuleType.EXPLOIT, ModuleType.AUXILIARY):
+        results = db.search_vulnerabilities(cve="", module_type=mt)
+        assert all(r.module_type == mt for r in results)

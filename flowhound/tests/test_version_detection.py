@@ -388,3 +388,58 @@ def test_convert_tuple_to_version_invalid_input_raises(value):
 
     with _pytest.raises(ValueError):
         convert_tuple_to_version(value)
+
+
+# ---------------------------------------------------------------------------
+# get_langflow_target_version — wrong package name branch (line 45)
+# ---------------------------------------------------------------------------
+
+
+def test_get_langflow_target_version_wrong_package_raises_runtime_error():
+    """A 200 response with a valid version but wrong package name is rejected."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"version": "1.5.0", "package": "NotLangflow"}
+
+    with (
+        patch(
+            "flowhound.vulnerabilities.io.version_detection.get", return_value=mock_resp
+        ),
+        pytest.raises(RuntimeError, match="does not appear to be a Langflow instance"),
+    ):
+        get_langflow_target_version(base_url="http://localhost:7860")
+
+
+# ---------------------------------------------------------------------------
+# get_mlflow_target_version — non-numeric semver parts branch (line 81)
+# ---------------------------------------------------------------------------
+
+
+def test_get_mlflow_target_version_non_numeric_parts_raises_runtime_error():
+    """A version with two dots but non-digit segments raises RuntimeError."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.text = "3.1.alpha"
+
+    with (
+        patch(
+            "flowhound.vulnerabilities.io.version_detection.get", return_value=mock_resp
+        ),
+        pytest.raises(RuntimeError, match="unexpected format"),
+    ):
+        get_mlflow_target_version(base_url="http://localhost:5000")
+
+
+# ---------------------------------------------------------------------------
+# convert_version_to_tuple: two-dot strings with non-numeric segments always raise
+# ---------------------------------------------------------------------------
+
+
+@given(st.from_regex(r"[a-z][a-z0-9]*\.[a-z][a-z0-9]*\.[a-z][a-z0-9]*", fullmatch=True))
+@settings(max_examples=200)
+def test_convert_version_to_tuple_non_numeric_semver_raises(value):
+    """A string with exactly two dots but non-digit segments always raises ValueError."""
+    import pytest as _pytest
+
+    with _pytest.raises(ValueError):
+        convert_version_to_tuple(value)

@@ -1,6 +1,12 @@
 import importlib
+from enum import StrEnum
 
 from flowhound.vulnerabilities.utils import convert_tuple_to_version
+
+
+class ModuleType(StrEnum):
+    EXPLOIT = "exploit"
+    AUXILIARY = "auxiliary"
 
 
 class CVE:
@@ -16,19 +22,35 @@ class CVE:
         cvss_severity: float,
         min_impacted_version: str,
         max_impacted_version: str,
-        exploit_module: str,
-        exploit_class: str,
+        module: str,
+        module_class: str,
+        module_type: str,
         auth_required: bool,
     ):
         self.application = application
         self.cve_id = cve_id
         self.cve_description = cve_description
         self.cvss_severity = cvss_severity
-        self.exploit_module = exploit_module
-        self.exploit_class = exploit_class
+        self.module = module
+        self.module_class = module_class
+        self.module_type = module_type
         self.auth_required = auth_required
         self.min_impacted_version = min_impacted_version
         self.max_impacted_version = max_impacted_version
+
+    @property
+    def module_type(self) -> str:
+        """
+        Retrieves the module type (exploit or auxiliary).
+        """
+        return self._module_type
+
+    @module_type.setter
+    def module_type(self, module_type):
+        try:
+            self._module_type = ModuleType(module_type)
+        except ValueError:
+            raise ValueError("`module_type` must be either 'exploit' or 'auxiliary'.")
 
     @property
     def application(self) -> str:
@@ -83,11 +105,11 @@ class CVE:
             raise ValueError("`version` must take the form of `x.x.x`.")
         self._max_impacted_version = version
 
-    def get_exploit_instance(self):
+    def get_module_instance(self):
         try:
-            module = importlib.import_module(self.exploit_module)
-            exploit_class_inst = getattr(module, self.exploit_class)
+            module = importlib.import_module(self.module)
+            module_class_inst = getattr(module, self.module_class)
         except Exception as e:  # noqa: BLE001
-            raise RuntimeError(f"Error importing exploit module: {e!s}")
+            raise RuntimeError(f"Error importing module: {e!s}")
 
-        return exploit_class_inst()
+        return module_class_inst()

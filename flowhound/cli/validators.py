@@ -18,6 +18,18 @@ def validate_url(ctx, param, value) -> str:
     return value
 
 
+def validate_file_path(ctx, param, value) -> str | None:
+    if value is None:
+        return None
+
+    if not value.startswith("/"):
+        raise click.BadParameter(
+            f"File path must be an absolute path (e.g. /etc/passwd): {value!r}"
+        )
+
+    return value
+
+
 def validate_proxy(ctx, param, value) -> dict[str, str] | None:
     if value is None:
         return value

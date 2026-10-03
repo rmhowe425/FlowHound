@@ -1,11 +1,11 @@
-"""Tests for flowhound.vulnerabilities.exploits.cve_2026_0769."""
+"""Tests for flowhound.vulnerabilities.exploits.langflow.cve_2026_0769."""
 
 from unittest.mock import MagicMock, patch
 
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from flowhound.vulnerabilities.exploits.cve_2026_0769 import Exploit
+from flowhound.vulnerabilities.exploits.langflow.cve_2026_0769 import Exploit
 
 _BASE_URL = "http://localhost:7860"
 _AUTH_HEADERS = {
@@ -108,7 +108,7 @@ class TestTriggerVuln:
     def test_sends_to_custom_component_endpoint(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_0769.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769.post",
             return_value=_mock_resp(200),
         ) as mock_post:
             exploit.trigger_vuln(base_url=_BASE_URL, auth=_AUTH_HEADERS, code="x = 1")
@@ -117,7 +117,7 @@ class TestTriggerVuln:
     def test_body_contains_code_and_frontend_node(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_0769.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769.post",
             return_value=_mock_resp(200),
         ) as mock_post:
             exploit.trigger_vuln(base_url=_BASE_URL, auth=_AUTH_HEADERS, code="x = 1")
@@ -128,7 +128,7 @@ class TestTriggerVuln:
     def test_body_appends_component_boilerplate(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_0769.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769.post",
             return_value=_mock_resp(200),
         ) as mock_post:
             exploit.trigger_vuln(base_url=_BASE_URL, auth=_AUTH_HEADERS, code="x = 1")
@@ -139,7 +139,7 @@ class TestTriggerVuln:
     def test_sends_content_type_header(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_0769.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769.post",
             return_value=_mock_resp(200),
         ) as mock_post:
             exploit.trigger_vuln(base_url=_BASE_URL, auth=_AUTH_HEADERS, code="x = 1")
@@ -150,7 +150,7 @@ class TestTriggerVuln:
     def test_auth_header_forwarded(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_0769.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769.post",
             return_value=_mock_resp(200),
         ) as mock_post:
             exploit.trigger_vuln(base_url=_BASE_URL, auth=_AUTH_HEADERS, code="x = 1")
@@ -159,7 +159,7 @@ class TestTriggerVuln:
     def test_network_error_returns_none(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_0769.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769.post",
             side_effect=OSError("refused"),
         ):
             assert (
@@ -173,7 +173,7 @@ class TestTriggerVuln:
         proxies = {"http": "http://127.0.0.1:8080"}
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_0769.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769.post",
             return_value=_mock_resp(200),
         ) as mock_post:
             exploit.trigger_vuln(
@@ -194,7 +194,7 @@ class TestUploadFlow:
     def test_sends_to_flows_endpoint(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_0769.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769.post",
             return_value=_mock_resp(201, {"id": "abc123"}),
         ) as mock_post:
             exploit._upload_flow(
@@ -205,7 +205,7 @@ class TestUploadFlow:
     def test_returns_flow_id_on_201(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_0769.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769.post",
             return_value=_mock_resp(201, {"id": "flow-abc"}),
         ):
             result = exploit._upload_flow(
@@ -216,7 +216,7 @@ class TestUploadFlow:
     def test_returns_flow_id_on_200(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_0769.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769.post",
             return_value=_mock_resp(200, {"id": "flow-xyz"}),
         ):
             result = exploit._upload_flow(
@@ -227,7 +227,7 @@ class TestUploadFlow:
     def test_returns_none_on_non_200(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_0769.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769.post",
             return_value=_mock_resp(403, {"detail": "forbidden"}),
         ):
             assert (
@@ -240,7 +240,7 @@ class TestUploadFlow:
     def test_returns_none_on_network_error(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_0769.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769.post",
             side_effect=OSError("refused"),
         ):
             assert (
@@ -253,7 +253,7 @@ class TestUploadFlow:
     def test_component_code_embedded_in_body(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_0769.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769.post",
             return_value=_mock_resp(201, {"id": "x"}),
         ) as mock_post:
             exploit._upload_flow(
@@ -276,7 +276,7 @@ class TestTriggerFlow:
     def test_sends_to_build_endpoint(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_0769.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769.post",
             return_value=_mock_resp(200),
         ) as mock_post:
             exploit._trigger_flow(
@@ -287,7 +287,7 @@ class TestTriggerFlow:
     def test_uses_short_read_timeout(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_0769.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769.post",
             return_value=_mock_resp(200),
         ) as mock_post:
             exploit._trigger_flow(
@@ -300,7 +300,7 @@ class TestTriggerFlow:
     def test_network_error_does_not_raise(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_0769.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769.post",
             side_effect=OSError("timed out"),
         ):
             exploit._trigger_flow(
@@ -317,7 +317,7 @@ class TestDeleteFlow:
     def test_sends_delete_to_flows_endpoint(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_0769.delete",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769.delete",
             return_value=_mock_resp(204),
         ) as mock_delete:
             exploit._delete_flow(
@@ -328,7 +328,7 @@ class TestDeleteFlow:
     def test_network_error_does_not_raise(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_0769.delete",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769.delete",
             side_effect=OSError("refused"),
         ):
             exploit._delete_flow(
@@ -347,7 +347,7 @@ class TestExploitNonBlocking:
         with (
             patch.object(exploit, "handle_authentication", return_value=_AUTH_HEADERS),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_0769.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769.post",
                 return_value=_mock_resp(200, {"result": "ok"}),
             ),
         ):
@@ -358,7 +358,7 @@ class TestExploitNonBlocking:
         with (
             patch.object(exploit, "handle_authentication", return_value=_AUTH_HEADERS),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_0769.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769.post",
                 return_value=_mock_resp(400, {"detail": "bad request"}),
             ),
         ):
@@ -370,7 +370,9 @@ class TestExploitNonBlocking:
         exploit = Exploit()
         with (
             patch.object(exploit, "handle_authentication", return_value=None),
-            patch("flowhound.vulnerabilities.exploits.cve_2026_0769.post") as mock_post,
+            patch(
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769.post"
+            ) as mock_post,
         ):
             assert (
                 exploit.exploit(base_url=_BASE_URL, username="", password="") is False
@@ -382,7 +384,7 @@ class TestExploitNonBlocking:
         with (
             patch.object(exploit, "handle_authentication", return_value=_AUTH_HEADERS),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_0769.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769.post",
                 side_effect=OSError("refused"),
             ),
         ):
@@ -395,7 +397,7 @@ class TestExploitNonBlocking:
         with (
             patch.object(exploit, "handle_authentication", return_value=_AUTH_HEADERS),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_0769.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769.post",
                 return_value=_mock_resp(200),
             ) as mock_post,
         ):
@@ -411,7 +413,7 @@ class TestExploitNonBlocking:
         with (
             patch.object(exploit, "handle_authentication", return_value=_AUTH_HEADERS),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_0769.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769.post",
                 return_value=_mock_resp(200),
             ) as mock_post,
         ):
@@ -431,7 +433,7 @@ class TestExploitNonBlocking:
             patch.object(exploit, "_upload_flow") as mock_upload,
             patch.object(exploit, "_trigger_flow") as mock_trigger,
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_0769.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769.post",
                 return_value=_mock_resp(200),
             ),
         ):

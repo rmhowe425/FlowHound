@@ -6,8 +6,9 @@
         "cvss_severity": 10.0,
         "min_impacted_version": [1, 0, 0],
         "max_impacted_version": [1, 10, 0],
-        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_9198",
-        "exploit_class": "Exploit",
+        "module": "flowhound.vulnerabilities.exploits.langflow.cve_2026_9198",
+        "module_class": "Exploit",
+        "module_type": "exploit",
         "auth_required": false
     },
     {
@@ -17,8 +18,9 @@
         "cvss_severity": 10.0,
         "min_impacted_version": [1, 5, 0],
         "max_impacted_version": [1, 9, 0],
-        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_93674",
-        "exploit_class": "Exploit",
+        "module": "flowhound.vulnerabilities.exploits.langflow.cve_2026_93674",
+        "module_class": "Exploit",
+        "module_type": "exploit",
         "auth_required": true
     },
     {
@@ -28,8 +30,9 @@
         "cvss_severity": 9.8,
         "min_impacted_version": [1, 3, 2],
         "max_impacted_version": [1, 3, 2],
-        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_0769",
-        "exploit_class": "Exploit",
+        "module": "flowhound.vulnerabilities.exploits.langflow.cve_2026_0769",
+        "module_class": "Exploit",
+        "module_type": "exploit",
         "auth_required": false
     },
     {
@@ -39,8 +42,9 @@
         "cvss_severity": 9.9,
         "min_impacted_version": [1, 0, 0],
         "max_impacted_version": [1, 11, 1],
-        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_19295",
-        "exploit_class": "Exploit",
+        "module": "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295",
+        "module_class": "Exploit",
+        "module_type": "exploit",
         "auth_required": true
     },
     {
@@ -50,8 +54,9 @@
         "cvss_severity": 9.8,
         "min_impacted_version": [1, 11, 0],
         "max_impacted_version": [1, 11, 1],
-        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_19286",
-        "exploit_class": "Exploit",
+        "module": "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286",
+        "module_class": "Exploit",
+        "module_type": "exploit",
         "auth_required": true
     },
     {
@@ -61,8 +66,9 @@
         "cvss_severity": 8.8,
         "min_impacted_version": [1, 0, 0],
         "max_impacted_version": [1, 11, 1],
-        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_18729",
-        "exploit_class": "Exploit",
+        "module": "flowhound.vulnerabilities.exploits.langflow.cve_2026_18729",
+        "module_class": "Exploit",
+        "module_type": "exploit",
         "auth_required": true
     },
     {
@@ -72,8 +78,9 @@
         "cvss_severity": 8.8,
         "min_impacted_version": [1, 0, 0],
         "max_impacted_version": [1, 8, 4],
-        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_5027",
-        "exploit_class": "Exploit",
+        "module": "flowhound.vulnerabilities.exploits.langflow.cve_2026_5027",
+        "module_class": "Exploit",
+        "module_type": "exploit",
         "auth_required": true
     },
     {
@@ -83,8 +90,9 @@
         "cvss_severity": 8.8,
         "min_impacted_version": [1, 0, 0],
         "max_impacted_version": [1, 10, 0],
-        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_7873",
-        "exploit_class": "Exploit",
+        "module": "flowhound.vulnerabilities.exploits.langflow.cve_2026_7873",
+        "module_class": "Exploit",
+        "module_type": "exploit",
         "auth_required": true
     },
     {
@@ -94,8 +102,9 @@
         "cvss_severity": 8.8,
         "min_impacted_version": [1, 0, 0],
         "max_impacted_version": [1, 9, 3],
-        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_10134",
-        "exploit_class": "Exploit",
+        "module": "flowhound.vulnerabilities.exploits.langflow.cve_2026_10134",
+        "module_class": "Exploit",
+        "module_type": "exploit",
         "auth_required": true
     },
     {
@@ -105,8 +114,9 @@
         "cvss_severity": 9.8,
         "min_impacted_version": [1, 4, 2],
         "max_impacted_version": [1, 4, 2],
-        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_0768",
-        "exploit_class": "Exploit",
+        "module": "flowhound.vulnerabilities.exploits.langflow.cve_2026_0768",
+        "module_class": "Exploit",
+        "module_type": "exploit",
         "auth_required": false
     },
     {
@@ -116,8 +126,9 @@
         "cvss_severity": 9.8,
         "min_impacted_version": [1, 0, 0],
         "max_impacted_version": [2, 2, 0],
-        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2023_1177",
-        "exploit_class": "Exploit",
+        "module": "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_1177",
+        "module_class": "Auxiliary",
+        "module_type": "auxiliary",
         "auth_required": false
     },
     {
@@ -127,8 +138,9 @@
         "cvss_severity": 8.8,
         "min_impacted_version": [1, 0, 0],
         "max_impacted_version": [2, 11, 2],
-        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2024_27132",
-        "exploit_class": "Exploit",
+        "module": "flowhound.vulnerabilities.auxiliary.mlflow.cve_2024_27132",
+        "module_class": "Auxiliary",
+        "module_type": "auxiliary",
         "auth_required": true
     },
     {
@@ -138,8 +150,9 @@
         "cvss_severity": 7.5,
         "min_impacted_version": [1, 0, 0],
         "max_impacted_version": [2, 9, 1],
-        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2023_6977",
-        "exploit_class": "Exploit",
+        "module": "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_6977",
+        "module_class": "Auxiliary",
+        "module_type": "auxiliary",
         "auth_required": true
     }
 ]

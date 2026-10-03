@@ -1,8 +1,8 @@
-"""Tests for flowhound.vulnerabilities.exploits.cve_2023_1177."""
+"""Tests for flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_1177."""
 
 from unittest.mock import MagicMock, patch
 
-from flowhound.vulnerabilities.exploits.cve_2023_1177 import Exploit
+from flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_1177 import Auxiliary
 
 _BASE_URL = "http://localhost:5000"
 _AUTH_HEADERS = {
@@ -29,25 +29,25 @@ class TestTriggerVuln:
         mock_resp.status_code = 200
         mock_resp.text = "file content"
 
-        exploit = Exploit()
+        exploit = Auxiliary()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2023_1177.get",
+            "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_1177.get",
             return_value=mock_resp,
         ):
             result = exploit.trigger_vuln(
-                base_url=_BASE_URL, path="../../../../etc/passwd"
+                base_url=_BASE_URL, f_path="../../../../etc/passwd"
             )
 
         assert result == (200, "file content")
 
     def test_network_error_returns_none(self):
-        exploit = Exploit()
+        exploit = Auxiliary()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2023_1177.get",
+            "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_1177.get",
             side_effect=ConnectionError("refused"),
         ):
             result = exploit.trigger_vuln(
-                base_url=_BASE_URL, path="../../../../etc/passwd"
+                base_url=_BASE_URL, f_path="../../../../etc/passwd"
             )
 
         assert result is None
@@ -58,25 +58,19 @@ class TestTriggerVuln:
 # ---------------------------------------------------------------------------
 
 
-class TestExploit:
+class TestRun:
     def test_successful_traversal(self):
         """A 200 response with body signals a successful file read."""
-        auth_resp = _mock_auth_get(200)
         traversal_resp = MagicMock()
         traversal_resp.status_code = 200
         traversal_resp.text = "root:x:0:0:root:/root:/bin/bash\n"
 
-        exploit = Exploit()
-        with (
-            patch(
-                "flowhound.vulnerabilities.clients.mlflow.get", return_value=auth_resp
-            ),
-            patch(
-                "flowhound.vulnerabilities.exploits.cve_2023_1177.get",
-                return_value=traversal_resp,
-            ),
+        exploit = Auxiliary()
+        with patch(
+            "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_1177.get",
+            return_value=traversal_resp,
         ):
-            result = exploit.exploit(
+            result = exploit.run(
                 base_url=_BASE_URL, username="admin", password="secret"
             )
 
@@ -88,48 +82,42 @@ class TestExploit:
         not_found.status_code = 404
         not_found.text = ""
 
-        exploit = Exploit()
+        exploit = Auxiliary()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2023_1177.get",
+            "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_1177.get",
             return_value=not_found,
         ):
-            result = exploit.exploit(base_url=_BASE_URL, username="", password="")
+            result = exploit.run(base_url=_BASE_URL, username="", password="")
 
         assert result is False
 
     def test_network_error_skips_target(self):
         """A network error on every probe returns False without raising."""
-        exploit = Exploit()
+        exploit = Auxiliary()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2023_1177.get",
+            "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_1177.get",
             side_effect=ConnectionError("refused"),
         ):
-            result = exploit.exploit(base_url=_BASE_URL, username="", password="")
+            result = exploit.run(base_url=_BASE_URL, username="", password="")
 
         assert result is False
 
-    def test_uses_custom_payload(self):
-        """When a payload is provided its load_payload() value is used as the sole target."""
-        auth_resp = _mock_auth_get(200)
+    def test_uses_custom_f_path(self):
+        """When f_path is provided it is used as the sole traversal target."""
         traversal_resp = MagicMock()
         traversal_resp.status_code = 200
         traversal_resp.text = "SECRET_KEY=abc123"
 
-        payload = MagicMock()
-        payload.load_payload.return_value = "../../../../app/.env"
-
-        exploit = Exploit()
-        with (
-            patch(
-                "flowhound.vulnerabilities.clients.mlflow.get", return_value=auth_resp
-            ),
-            patch(
-                "flowhound.vulnerabilities.exploits.cve_2023_1177.get",
-                return_value=traversal_resp,
-            ) as mock_get,
-        ):
-            result = exploit.exploit(
-                base_url=_BASE_URL, username="", password="", payload=payload
+        exploit = Auxiliary()
+        with patch(
+            "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_1177.get",
+            return_value=traversal_resp,
+        ) as mock_get:
+            result = exploit.run(
+                base_url=_BASE_URL,
+                username="",
+                password="",
+                f_path="../../../../app/.env",
             )
 
         assert result is True

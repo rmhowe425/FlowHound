@@ -1,10 +1,10 @@
-"""Tests for flowhound.vulnerabilities.exploits.cve_2026_9198."""
+"""Tests for flowhound.vulnerabilities.exploits.langflow.cve_2026_9198."""
 
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from flowhound.vulnerabilities.exploits.cve_2026_9198 import Exploit
+from flowhound.vulnerabilities.exploits.langflow.cve_2026_9198 import Exploit
 
 _BASE_URL = "http://localhost:7860"
 _AUTH_HEADERS = {
@@ -32,7 +32,7 @@ class TestTriggerVuln:
         mock_resp = _mock_resp(200, {"detail": "ok"})
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_9198.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_9198.post",
             return_value=mock_resp,
         ):
             result = exploit.trigger_vuln(
@@ -44,7 +44,7 @@ class TestTriggerVuln:
         exploit = Exploit()
         with (
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_9198.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_9198.post",
                 side_effect=ConnectionError("refused"),
             ),
             pytest.raises(RuntimeError, match="Error querying API"),
@@ -56,14 +56,14 @@ class TestTriggerVuln:
     def test_blocking_connection_error_raises_blocking_disconnect(self):
         from requests.exceptions import ConnectionError as RequestsConnectionError
 
-        from flowhound.vulnerabilities.exploits.cve_2026_9198 import (
+        from flowhound.vulnerabilities.exploits.langflow.cve_2026_9198 import (
             _BlockingPayloadDisconnect,
         )
 
         exploit = Exploit()
         with (
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_9198.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_9198.post",
                 side_effect=RequestsConnectionError("Remote end closed connection"),
             ),
             pytest.raises(_BlockingPayloadDisconnect),
@@ -75,14 +75,14 @@ class TestTriggerVuln:
     def test_blocking_read_timeout_raises_blocking_disconnect(self):
         from requests import ReadTimeout
 
-        from flowhound.vulnerabilities.exploits.cve_2026_9198 import (
+        from flowhound.vulnerabilities.exploits.langflow.cve_2026_9198 import (
             _BlockingPayloadDisconnect,
         )
 
         exploit = Exploit()
         with (
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_9198.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_9198.post",
                 side_effect=ReadTimeout(),
             ),
             pytest.raises(_BlockingPayloadDisconnect),
@@ -95,7 +95,7 @@ class TestTriggerVuln:
         mock_resp = _mock_resp(200)
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_9198.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_9198.post",
             return_value=mock_resp,
         ) as mock_post:
             exploit.trigger_vuln(
@@ -112,7 +112,7 @@ class TestTriggerVuln:
         proxies = {"http": "http://127.0.0.1:8080", "https": "http://127.0.0.1:8080"}
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_9198.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_9198.post",
             return_value=mock_resp,
         ) as mock_post:
             exploit.trigger_vuln(
@@ -127,7 +127,7 @@ class TestTriggerVuln:
         mock_resp = _mock_resp(200)
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_9198.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_9198.post",
             return_value=mock_resp,
         ):
             result = exploit.trigger_vuln(base_url=_BASE_URL, headers={}, code="")
@@ -137,7 +137,7 @@ class TestTriggerVuln:
         mock_resp = _mock_resp(200)
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_9198.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_9198.post",
             return_value=mock_resp,
         ):
             result = exploit.trigger_vuln(
@@ -162,7 +162,7 @@ class TestExploit:
                 "flowhound.vulnerabilities.clients.langflow.get", return_value=auth_resp
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_9198.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_9198.post",
                 return_value=vuln_resp,
             ),
         ):
@@ -180,7 +180,7 @@ class TestExploit:
                 "flowhound.vulnerabilities.clients.langflow.get", return_value=auth_resp
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_9198.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_9198.post",
                 return_value=vuln_resp,
             ),
         ):
@@ -219,7 +219,7 @@ class TestExploit:
                 "flowhound.vulnerabilities.clients.langflow.get", return_value=auth_resp
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_9198.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_9198.post",
                 return_value=vuln_resp,
             ) as mock_post,
         ):
@@ -239,7 +239,7 @@ class TestExploit:
                 "flowhound.vulnerabilities.clients.langflow.get", return_value=auth_resp
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_9198.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_9198.post",
                 return_value=vuln_resp,
             ) as mock_post,
         ):
@@ -261,7 +261,7 @@ class TestExploit:
                 "flowhound.vulnerabilities.clients.langflow.get", return_value=auth_resp
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_9198.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_9198.post",
                 side_effect=ReadTimeout(),
             ),
         ):
@@ -283,7 +283,7 @@ class TestExploit:
                 "flowhound.vulnerabilities.clients.langflow.get", return_value=auth_resp
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_9198.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_9198.post",
                 return_value=vuln_resp,
             ),
         ):

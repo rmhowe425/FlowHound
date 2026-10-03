@@ -2,7 +2,7 @@ import logging
 
 import click
 
-from flowhound.cli.command import attack, sniff
+from flowhound.cli.command import attack, scan, sniff
 from flowhound.cli.message_format import ClickLogHandler
 from flowhound.vulnerabilities.io.database import Database
 
@@ -22,6 +22,7 @@ def main(ctx: click.Context):
 
 
 main.add_command(attack)
+main.add_command(scan)
 main.add_command(sniff)
 
 if __name__ == "__main__":

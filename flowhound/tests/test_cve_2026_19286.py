@@ -1,11 +1,11 @@
-"""Tests for flowhound.vulnerabilities.exploits.cve_2026_19286."""
+"""Tests for flowhound.vulnerabilities.exploits.langflow.cve_2026_19286."""
 
 from unittest.mock import MagicMock, patch
 
 from requests import ReadTimeout
 from requests.exceptions import ConnectionError as RequestsConnectionError
 
-from flowhound.vulnerabilities.exploits.cve_2026_19286 import (
+from flowhound.vulnerabilities.exploits.langflow.cve_2026_19286 import (
     _BLOCKING_SENTINEL,
     Exploit,
 )
@@ -63,7 +63,7 @@ class TestCreateFlow:
     def test_non_blocking_returns_id(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_19286.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.post",
             return_value=_mock_resp(201, {"id": "flow-xyz"}),
         ):
             assert (
@@ -74,7 +74,7 @@ class TestCreateFlow:
     def test_blocking_indents_code_in_template(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_19286.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.post",
             return_value=_mock_resp(200, {"id": "flow-abc"}),
         ) as mock_post:
             result = exploit.create_flow(
@@ -89,7 +89,7 @@ class TestCreateFlow:
     def test_returns_none_on_bad_status(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_19286.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.post",
             return_value=_mock_resp(400, {"error": "bad"}),
         ):
             assert (
@@ -100,7 +100,7 @@ class TestCreateFlow:
     def test_returns_none_when_id_missing(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_19286.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.post",
             return_value=_mock_resp(200, {"name": "flow"}),
         ):
             assert (
@@ -111,7 +111,7 @@ class TestCreateFlow:
     def test_network_error_returns_none(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_19286.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.post",
             side_effect=ConnectionError("refused"),
         ):
             assert (
@@ -129,7 +129,7 @@ class TestTriggerVuln:
     def test_404_returns_none(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_19286.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.post",
             return_value=_mock_resp(404, {}),
         ):
             assert (
@@ -140,7 +140,7 @@ class TestTriggerVuln:
     def test_non_200_non_404_returns_none(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_19286.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.post",
             return_value=_mock_resp(500, {}),
         ):
             assert (
@@ -162,7 +162,7 @@ class TestTriggerVuln:
         }
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_19286.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.post",
             return_value=_mock_resp(200, rce_payload),
         ):
             assert (
@@ -173,7 +173,7 @@ class TestTriggerVuln:
     def test_200_no_output_returns_none(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_19286.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.post",
             return_value=_mock_resp(200, {"result": {}}),
         ):
             assert (
@@ -184,7 +184,7 @@ class TestTriggerVuln:
     def test_network_error_returns_none(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_19286.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.post",
             side_effect=ConnectionError("refused"),
         ):
             assert (
@@ -195,7 +195,7 @@ class TestTriggerVuln:
     def test_blocking_read_timeout_returns_sentinel(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_19286.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.post",
             side_effect=ReadTimeout(),
         ):
             assert (
@@ -211,7 +211,7 @@ class TestTriggerVuln:
     def test_blocking_remote_disconnected_returns_sentinel(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_19286.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.post",
             side_effect=RequestsConnectionError("Remote end closed connection"),
         ):
             assert (
@@ -227,7 +227,7 @@ class TestTriggerVuln:
     def test_non_blocking_connection_error_returns_none(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_19286.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.post",
             side_effect=RequestsConnectionError("refused"),
         ):
             assert (
@@ -243,7 +243,7 @@ class TestTriggerVuln:
     def test_blocking_uses_short_read_timeout(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_19286.post",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.post",
             side_effect=ReadTimeout(),
         ) as mock_post:
             exploit.trigger_vuln(
@@ -265,7 +265,7 @@ class TestDeleteFlow:
     def test_success(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_19286.delete",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.delete",
             return_value=_mock_resp(200),
         ):
             exploit.delete_flow(
@@ -275,7 +275,7 @@ class TestDeleteFlow:
     def test_network_error_does_not_raise(self):
         exploit = Exploit()
         with patch(
-            "flowhound.vulnerabilities.exploits.cve_2026_19286.delete",
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.delete",
             side_effect=ConnectionError("refused"),
         ):
             exploit.delete_flow(
@@ -318,7 +318,7 @@ class TestExploit:
                 return_value=_mock_auth_post(),
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_19286.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.post",
                 return_value=_mock_resp(400, {"error": "bad"}),
             ),
         ):
@@ -346,14 +346,14 @@ class TestExploit:
                 return_value=_mock_auth_post(),
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_19286.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.post",
                 side_effect=[
                     _mock_resp(201, {"id": "flow-1"}),
                     _mock_resp(200, rce_payload),
                 ],
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_19286.delete",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.delete",
                 return_value=_mock_resp(200),
             ),
         ):
@@ -377,14 +377,14 @@ class TestExploit:
                 return_value=_mock_auth_post(),
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_19286.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.post",
                 side_effect=[
                     _mock_resp(201, {"id": "flow-1"}),  # create_flow
                     ReadTimeout(),  # trigger_vuln — shell fired
                 ],
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_19286.delete",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.delete",
                 return_value=_mock_resp(200),
             ) as mock_delete,
         ):
@@ -416,14 +416,14 @@ class TestExploit:
                 return_value=_mock_auth_post(),
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_19286.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.post",
                 side_effect=[
                     _mock_resp(201, {"id": "flow-1"}),
                     RequestsConnectionError("Remote end closed connection"),
                 ],
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_19286.delete",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.delete",
                 return_value=_mock_resp(200),
             ) as mock_delete,
         ):
@@ -451,14 +451,14 @@ class TestExploit:
                 return_value=_mock_auth_post(),
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_19286.post",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.post",
                 side_effect=[
                     _mock_resp(201, {"id": "flow-1"}),
                     _mock_resp(200, {"result": {}}),
                 ],
             ),
             patch(
-                "flowhound.vulnerabilities.exploits.cve_2026_19286.delete",
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.delete",
                 return_value=_mock_resp(200),
             ),
         ):
@@ -466,3 +466,35 @@ class TestExploit:
                 exploit.exploit(base_url=_BASE_URL, username="admin", password="secret")
                 is False
             )
+
+
+# ---------------------------------------------------------------------------
+# trigger_vuln — KeyError/TypeError/AttributeError in artifact extraction (lines 219-220)
+# ---------------------------------------------------------------------------
+
+
+class TestTriggerVulnArtifactExtractionError:
+    def test_malformed_artifact_structure_does_not_raise(self):
+        """KeyError/TypeError during artifact extraction is silently swallowed; None is returned."""
+        exploit = Exploit()
+        # 200 response whose JSON structure will cause a KeyError inside the artifact loop
+        malformed = _mock_resp(
+            200,
+            {
+                "result": {
+                    "artifacts": [
+                        {
+                            "parts": [{"data": None}]
+                        }  # data is None → TypeError on .values()
+                    ]
+                }
+            },
+        )
+        with patch(
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_19286.post",
+            return_value=malformed,
+        ):
+            result = exploit.trigger_vuln(
+                base_url=_BASE_URL, flow_id="flow-1", command="id"
+            )
+        assert result is None
