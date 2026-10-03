@@ -160,7 +160,7 @@ class TestExploit:
         # HTTP 200 with output in function.errors[0] is the success condition.
         exploit = Exploit()
         with (
-            patch.object(exploit, "authenticate", return_value=_AUTH_HEADER),
+            patch.object(exploit, "handle_authentication", return_value=_AUTH_HEADER),
             patch(
                 "flowhound.vulnerabilities.exploits.cve_2026_0768.post",
                 return_value=_mock_resp(
@@ -181,7 +181,7 @@ class TestExploit:
         exploit = Exploit()
         logged = []
         with (
-            patch.object(exploit, "authenticate", return_value=_AUTH_HEADER),
+            patch.object(exploit, "handle_authentication", return_value=_AUTH_HEADER),
             patch(
                 "flowhound.vulnerabilities.exploits.cve_2026_0768.post",
                 return_value=_mock_resp(
@@ -202,7 +202,7 @@ class TestExploit:
     def test_returns_false_when_auth_fails(self):
         exploit = Exploit()
         with (
-            patch.object(exploit, "authenticate", return_value=None),
+            patch.object(exploit, "handle_authentication", return_value=None),
             patch("flowhound.vulnerabilities.exploits.cve_2026_0768.post") as mock_post,
         ):
             assert (
@@ -215,7 +215,7 @@ class TestExploit:
         # Any non-200 means the request was rejected before reaching the vuln path.
         exploit = Exploit()
         with (
-            patch.object(exploit, "authenticate", return_value=_AUTH_HEADER),
+            patch.object(exploit, "handle_authentication", return_value=_AUTH_HEADER),
             patch(
                 "flowhound.vulnerabilities.exploits.cve_2026_0768.post",
                 return_value=_mock_resp(403, {"detail": "forbidden"}),
@@ -229,7 +229,7 @@ class TestExploit:
     def test_returns_false_when_network_error(self):
         exploit = Exploit()
         with (
-            patch.object(exploit, "authenticate", return_value=_AUTH_HEADER),
+            patch.object(exploit, "handle_authentication", return_value=_AUTH_HEADER),
             patch(
                 "flowhound.vulnerabilities.exploits.cve_2026_0768.post",
                 side_effect=OSError("refused"),
@@ -243,7 +243,7 @@ class TestExploit:
     def test_uses_default_cmd_when_no_payload(self):
         exploit = Exploit()
         with (
-            patch.object(exploit, "authenticate", return_value=_AUTH_HEADER),
+            patch.object(exploit, "handle_authentication", return_value=_AUTH_HEADER),
             patch(
                 "flowhound.vulnerabilities.exploits.cve_2026_0768.post",
                 return_value=_mock_resp(200, {"detail": {"error": "uid=0(root)"}}),
@@ -259,7 +259,7 @@ class TestExploit:
         payload.blocking = False
         exploit = Exploit()
         with (
-            patch.object(exploit, "authenticate", return_value=_AUTH_HEADER),
+            patch.object(exploit, "handle_authentication", return_value=_AUTH_HEADER),
             patch(
                 "flowhound.vulnerabilities.exploits.cve_2026_0768.post",
                 return_value=_mock_resp(200, {"detail": {"error": "root"}}),
@@ -282,7 +282,7 @@ class TestExploit:
         payload.lport = 4444
         exploit = Exploit()
         with (
-            patch.object(exploit, "authenticate", return_value=_AUTH_HEADER),
+            patch.object(exploit, "handle_authentication", return_value=_AUTH_HEADER),
             patch(
                 "flowhound.vulnerabilities.exploits.cve_2026_0768.post",
                 side_effect=OSError("read timed out"),
@@ -308,7 +308,7 @@ class TestExploit:
         payload.lport = 4444
         exploit = Exploit()
         with (
-            patch.object(exploit, "authenticate", return_value=_AUTH_HEADER),
+            patch.object(exploit, "handle_authentication", return_value=_AUTH_HEADER),
             patch(
                 "flowhound.vulnerabilities.exploits.cve_2026_0768.post",
                 side_effect=OSError("read timed out"),
@@ -330,7 +330,7 @@ class TestExploit:
         # Confirms the bearer token from authenticate() reaches the HTTP request.
         exploit = Exploit()
         with (
-            patch.object(exploit, "authenticate", return_value=_AUTH_HEADER),
+            patch.object(exploit, "handle_authentication", return_value=_AUTH_HEADER),
             patch(
                 "flowhound.vulnerabilities.exploits.cve_2026_0768.post",
                 return_value=_mock_resp(200, {"detail": {"error": "uid=0(root)"}}),
