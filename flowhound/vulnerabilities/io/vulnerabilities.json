@@ -12,6 +12,17 @@
     },
     {
         "application": "langflow",
+        "cve_id": "CVE-2026-93674",
+        "cve_description": "Authenticated remote code execution in Langflow",
+        "cvss_severity": 10.0,
+        "min_impacted_version": [1, 5, 0],
+        "max_impacted_version": [1, 9, 0],
+        "exploit_module": "flowhound.vulnerabilities.exploits.cve_2026_93674",
+        "exploit_class": "Exploit",
+        "auth_required": true
+    },
+    {
+        "application": "langflow",
         "cve_id": "CVE-2026-0769",
         "cve_description": "Unauthenticated remote code execution in Langflow",
         "cvss_severity": 9.8,
