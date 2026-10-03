@@ -125,7 +125,7 @@
         "cve_description": "Unauthenticated path traversal / arbitrary file read in MLflow via the artifact download endpoint",
         "cvss_severity": 9.8,
         "min_impacted_version": [1, 0, 0],
-        "max_impacted_version": [2, 2, 0],
+        "max_impacted_version": [2, 1, 1],
         "module": "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_1177",
         "module_class": "Auxiliary",
         "module_type": "auxiliary",

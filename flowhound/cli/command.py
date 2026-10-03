@@ -399,6 +399,9 @@ def scan(
 
     for vuln in aux_modules:
         module = vuln.get_module_instance()
+        logger.info(
+            f"Launching Auxiliary module targeting {vuln.application} versions {vuln.min_impacted_version} through {vuln.max_impacted_version}"
+        )
         if not isinstance(module, AuxiliaryBaseClass):
             raise click.ClickException(
                 f"Module loaded for {vuln.cve_id} is not an auxiliary module."
