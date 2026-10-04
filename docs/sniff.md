@@ -40,9 +40,9 @@ flowhound sniff --url <URL> [OPTIONS]
 1. **Application and version** — determined by probing the target with registered version detectors. Each detector hits an application-specific endpoint:
     - **Langflow** — `GET /api/v1/version` → `{"version": "x.x.x", "package": "Langflow"}`
     - **MLflow** — `GET /version` → plain-text semver string
-2. **Applicable exploit modules** — the `exploit_module` field from every matching CVE record is printed to stdout.
+2. **Applicable modules** — the module type and path from every matching CVE record is printed to stdout (e.g. `[exploit] flowhound.vulnerabilities.exploits.langflow.cve_2026_9198` or `[auxiliary] flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_1177`).
 
-`sniff` always queries with `is_auth=True`, so it lists all CVEs for the version regardless of whether credentials are available. This gives a complete picture of the attack surface.
+`sniff` always queries with `is_auth=True`, so it lists all modules for the version regardless of whether credentials are available. This gives a complete picture of the attack surface.
 
 ---
 
@@ -58,13 +58,13 @@ Example output:
 
 ```
 [+] Detected langflow version 1.0.0.
-[+] Retrieving all known exploits for langflow version 1.0.0:
-[+] flowhound.vulnerabilities.exploits.cve_2026_9198
-[+] flowhound.vulnerabilities.exploits.cve_2026_19295
-[+] flowhound.vulnerabilities.exploits.cve_2026_18729
-[+] flowhound.vulnerabilities.exploits.cve_2026_5027
-[+] flowhound.vulnerabilities.exploits.cve_2026_7873
-[+] flowhound.vulnerabilities.exploits.cve_2026_10134
+[+] Retrieving all known modules for langflow version 1.0.0:
+[+] [exploit] flowhound.vulnerabilities.exploits.langflow.cve_2026_9198
+[+] [exploit] flowhound.vulnerabilities.exploits.langflow.cve_2026_19295
+[+] [exploit] flowhound.vulnerabilities.exploits.langflow.cve_2026_18729
+[+] [exploit] flowhound.vulnerabilities.exploits.langflow.cve_2026_5027
+[+] [exploit] flowhound.vulnerabilities.exploits.langflow.cve_2026_7873
+[+] [exploit] flowhound.vulnerabilities.exploits.langflow.cve_2026_10134
 ```
 
 MLflow target (skip auto-detection):
@@ -77,8 +77,8 @@ Example output:
 
 ```
 [+] Detected mlflow version 2.1.0.
-[+] Retrieving all known exploits for mlflow version 2.1.0:
-[+] flowhound.vulnerabilities.exploits.cve_2023_1177
+[+] Retrieving all known modules for mlflow version 2.1.0:
+[+] [auxiliary] flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_1177
 ```
 
 Route traffic through a proxy:
@@ -102,4 +102,5 @@ flowhound sniff --url http://target.example.com:7860 --proxy http://127.0.0.1:80
 ## See also
 
 - [Attack](attack.md) — launching exploits after reconnaissance.
+- [Scan](scan.md) — launching auxiliary modules.
 - [Vulnerability Database](vulnerabilities.md) — full CVE coverage details.

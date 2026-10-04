@@ -1,6 +1,8 @@
 # FlowHound
 
-FlowHound is an automated exploitation platform for scanning and testing insecure [Langflow](https://github.com/langflow-ai/langflow) and [MLflow](https://github.com/mlflow/mlflow) deployments.
+![FlowHound Logo](images/metasploit-nostalgia.png)
+
+FlowHound is an automated AI/ML infrastructure exploitation framework for scanning and testing insecure [Langflow](https://github.com/langflow-ai/langflow) and [MLflow](https://github.com/mlflow/mlflow) deployments.
 
 !!! warning "Authorised use only"
     FlowHound is intended exclusively for authorised security testing. Do not run it against systems you do not own or have explicit written permission to test.
@@ -31,14 +33,15 @@ Langflow and MLflow are widely deployed AI/ML platforms. When deployed without p
 | Capability | Description |
 |---|---|
 | Multi-target detection | Auto-detects Langflow or MLflow from the live API; override with `--application` |
-| CVE database | Bundled JSON database of known CVEs with CVSS scores and version ranges for each application |
+| CVE database | Bundled JSON database of known CVEs with CVSS scores, version ranges, and module types (exploit/auxiliary) |
 | Unauthenticated exploits | Exploits that require no credentials |
 | Authenticated exploits | Exploits that leverage supplied credentials |
+| Auxiliary scans | `scan` command for executing non-RCE modules (file read, SSRF) |
 | Custom payloads | `--command` for arbitrary shell commands; `--reverse_shell` for a reverse TCP shell |
 | Autopwn mode | `--autopwn` runs all matching exploits rather than stopping at the first success |
 | CVE targeting | `--cve` limits execution to a single named CVE |
 | Proxy support | Route all traffic through an HTTP(S) proxy |
-| `sniff` mode | Detect version and list applicable CVEs without launching any exploits |
+| `sniff` mode | Detect version and list applicable modules without launching any exploits |
 
 ---
 
@@ -48,20 +51,20 @@ Langflow and MLflow are widely deployed AI/ML platforms. When deployed without p
 # Install
 pip install flowhound
 
-# Detect version and list CVEs — no exploits launched
+# Detect version and list modules — no exploits or scans launched
 flowhound sniff --url http://TARGET:7860
 
 # Unauthenticated attack (Langflow — auto-detected)
 flowhound attack --url http://TARGET:7860
 
-# Unauthenticated attack (MLflow — skip auto-detection)
-flowhound attack --url http://TARGET:5000 --application mlflow
+# Target a single exploit CVE
+flowhound attack --url http://TARGET:7860 --cve CVE-2026-9198
 
 # Authenticated attack
 flowhound attack --url http://TARGET:7860 --username admin --password secret
 
-# Target a single CVE
-flowhound attack --url http://TARGET:5000 --cve CVE-2023-1177
+# Auxiliary scan (e.g. MLflow arbitrary file read)
+flowhound scan --url http://TARGET:5000 --cve CVE-2023-1177 --f_path /etc/passwd
 ```
 
 ---
@@ -74,6 +77,7 @@ flowhound attack --url http://TARGET:5000 --cve CVE-2023-1177
 | [Quick Start](quickstart.md) | First run walkthrough |
 | [CLI Overview](usage.md) | Complete CLI reference |
 | [Attack](attack.md) | `attack` command in depth |
+| [Scan](scan.md) | `scan` command in depth |
 | [Sniff](sniff.md) | `sniff` command in depth |
 | [Vulnerability Database](vulnerabilities.md) | CVE database schema and CVE coverage |
 | [Architecture](architecture.md) | Module architecture and exploit pipeline |

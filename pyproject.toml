@@ -4,17 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flowhound"
-version = "1.0.0"
-description = "Automated Langflow Exploitation Platform"
+version = "1.1.0"
+description = "Automated AI/ML Infrastructure Exploitation Framework"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [
     { name = "Richard Howe", email = "richard.howe@ibm.com" }
 ]
-keywords = ["security", "network"]
+keywords = ["security", "network", "ai", "machine-learning", "exploitation", "red-team"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Natural Language :: English",
     "Operating System :: OS Independent",

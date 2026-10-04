@@ -1,5 +1,5 @@
 site_name: FlowHound
-site_description: Automated exploitation platform for scanning and testing insecure Langflow deployments.
+site_description: Automated AI/ML infrastructure exploitation framework for scanning and testing insecure Langflow and MLflow deployments.
 site_author: Richard Howe
 site_url: https://flowhound.readthedocs.io/
 
@@ -12,18 +12,9 @@ site_dir: site
 theme:
   name: material
   palette:
-    - scheme: default
-      primary: deep orange
-      accent: orange
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
-    - scheme: slate
-      primary: deep orange
-      accent: orange
-      toggle:
-        icon: material/brightness-4
-        name: Switch to light mode
+    scheme: slate
+    primary: blue
+    accent: light blue
   features:
     - navigation.tabs
     - navigation.sections
@@ -56,9 +47,24 @@ nav:
   - Usage:
       - CLI Overview: usage.md
       - Attack: attack.md
+      - Scan: scan.md
       - Sniff: sniff.md
   - Vulnerabilities:
       - Vulnerability Database: vulnerabilities.md
+      - Langflow Exploits:
+          - CVE-2026-9198: cves/cve_2026_9198.md
+          - CVE-2026-93674: cves/cve_2026_93674.md
+          - CVE-2026-0769: cves/cve_2026_0769.md
+          - CVE-2026-0768: cves/cve_2026_0768.md
+          - CVE-2026-19295: cves/cve_2026_19295.md
+          - CVE-2026-19286: cves/cve_2026_19286.md
+          - CVE-2026-18729: cves/cve_2026_18729.md
+          - CVE-2026-5027: cves/cve_2026_5027.md
+          - CVE-2026-7873: cves/cve_2026_7873.md
+          - CVE-2026-10134: cves/cve_2026_10134.md
+      - MLflow Auxiliary:
+          - CVE-2023-1177: cves/cve_2023_1177.md
+          - CVE-2024-27132: cves/cve_2024_27132.md
   - Developer Guide:
       - Architecture: architecture.md
       - Development Setup: development.md
