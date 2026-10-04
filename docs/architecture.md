@@ -8,31 +8,35 @@ This page describes FlowHound's internal module architecture and the end-to-end 
 
 ```
 flowhound/
-├── __main__.py                        # CLI entry point; registers attack and sniff commands
+├── __main__.py                        # CLI entry point; registers attack, scan, and sniff commands
 ├── cli/
-│   ├── command.py                     # attack and sniff Click command definitions
-│   ├── validators.py                  # URL, proxy, CVE, and application input validators
-│   ├── banner.py                      # ASCII-art banner displayed on attack
+│   ├── command.py                     # attack, scan, and sniff Click command definitions
+│   ├── validators.py                  # URL, proxy, CVE, file path, and application input validators
+│   ├── banner.py                      # ASCII-art banner displayed on attack/scan
 │   └── message_format.py             # Coloured logging handler (ClickLogHandler)
 └── vulnerabilities/
+    ├── auxiliary/
+    │   ├── base_auxiliary_class.py    # Abstract base for auxiliary modules
+    │   └── mlflow/                    # MLflow auxiliary modules (CVE-2023-1177, CVE-2024-27132)
     ├── clients/
     │   ├── base.py                    # Abstract TargetClient adapter
     │   ├── langflow.py                # LangflowClient — auto-login & bearer-token auth
     │   └── mlflow.py                  # MLflowClient — HTTP Basic auth
     ├── cve/
-    │   └── cve.py                     # CVE data model; dynamically loads exploit modules
+    │   └── cve.py                     # CVE data model; dynamically loads exploit & auxiliary modules
     ├── io/
-    │   ├── database.py                # Reads vulnerabilities.json; filters by app, version & auth
+    │   ├── database.py                # Reads vulnerabilities.json; filters by app, version, auth & type
     │   ├── version_detection.py       # Per-application version probes; detect_target() dispatcher
     │   └── vulnerabilities.json       # Bundled CVE data store
     ├── exploits/
     │   ├── base_exploit_class.py      # Abstract base; _client_class, auto_login, authenticate
-    │   ├── cve_2026_*.py              # Langflow exploit PoC modules
-    │   └── cve_202[34]_*.py           # MLflow exploit PoC modules
-    └── payloads/
-        ├── base_payload_class.py      # Abstract base; generate_payload / load_payload interface
-        ├── execute_bash_command.py    # Runs an arbitrary shell command; captures stdout
-        └── reverse_tcp_shell.py       # Opens a reverse TCP shell
+    │   └── langflow/                  # Langflow exploit PoC modules
+    ├── payloads/
+    │   ├── base_payload_class.py      # Abstract base; generate_payload / load_payload interface
+    │   ├── execute_bash_command.py    # Runs an arbitrary shell command; captures stdout
+    │   └── reverse_tcp_shell.py       # Opens a reverse TCP shell
+    ├── base.py                        # BaseModule providing client management and auth helpers
+    └── utils.py                       # Version string/tuple conversion utilities
 ```
 
 ---
@@ -44,7 +48,7 @@ FlowHound enforces two import constraints via a pre-commit hook (`scripts/valida
 | Rule | Description |
 |---|---|
 | `vulnerabilities` → no `cli` imports | The vulnerabilities layer must not depend on the CLI layer |
-| `exploits` → no `io` imports | Exploit modules must not reach into I/O helpers directly |
+| `exploits` / `auxiliary` → no `io` imports | Exploit and auxiliary modules must not reach into I/O helpers directly |
 
 ---
 
@@ -70,16 +74,16 @@ Target URL supplied by user
   (auth_required=true excluded when no credentials supplied)
          │
          ▼
-  Exploit Module Selection
+  Exploit / Auxiliary Module Selection
   (CVE objects ordered by CVSS, unauthenticated first)
          │
          ▼
   Dynamic Import
-  (importlib.import_module(exploit_module))
+  (importlib.import_module(module))
          │
          ▼
-  Exploit Execution
-  (ThreadPoolExecutor with 20-second timeout)
+  Execution
+  (ThreadPoolExecutor with 60-second timeout)
          │
          ▼
   Result / Next CVE (if --autopwn)
@@ -121,8 +125,8 @@ Target URL supplied by user
 | Method | Description |
 |---|---|
 | `_load()` | Reads and validates `vulnerabilities.json`; raises on missing fields |
-| `retrieve_vulnerabilities(application, target_version, is_auth)` | Returns `CVE` objects matching the application, version range, and auth filter |
-| `search_vulnerabilities(cve)` | Returns `CVE` objects by CVE ID; returns all records if `cve` is empty |
+| `retrieve_vulnerabilities(application, target_version, is_auth, module_type)` | Returns `CVE` objects matching the application, version range, auth filter, and module type |
+| `search_vulnerabilities(cve, module_type)` | Returns `CVE` objects by CVE ID and module type; returns all records if `cve` is empty |
 
 ---
 
@@ -134,7 +138,7 @@ The `CVE` class is a data model that wraps a single vulnerability record. Versio
 
 **Key method:**
 
-- `get_exploit_instance()` — uses `importlib.import_module(self.exploit_module)` to dynamically load the exploit module and returns an instance of the class named by `self.exploit_class`.
+- `get_module_instance()` — uses `importlib.import_module(self.module)` to dynamically load the module and returns an instance of the class named by `self.module_class`.
 
 ---
 
@@ -153,6 +157,22 @@ Abstract base class that all exploit modules must subclass. Each concrete subcla
 - `exploit(base_url, username, password, proxies, payload) -> bool` — **abstract**; the exploit entry point; returns `True` on success.
 - `auto_login(base_url, proxies) -> dict | None` — authenticates via the target's auto-login endpoint (delegates to `_client_class`).
 - `authenticate(base_url, username, password, proxies) -> dict | None` — authenticates with supplied credentials (delegates to `_client_class`).
+
+---
+
+## AuxiliaryBaseClass
+
+[`flowhound/vulnerabilities/auxiliary/base_auxiliary_class.py`](https://github.com/rmhowe425/FlowHound/blob/main/flowhound/vulnerabilities/auxiliary/base_auxiliary_class.py)
+
+Abstract base class for all auxiliary modules (such as path traversal and SSRF).
+
+**Class variable:**
+
+- `_client_class: ClassVar[type[TargetClient]]` — the `TargetClient` subclass to use for authentication and HTTP operations.
+
+**Methods:**
+
+- `run(base_url, f_path, username, password, proxies, **kwargs) -> bool` — **abstract**; the auxiliary module execution entry point.
 
 ---
 
@@ -177,14 +197,25 @@ Abstract base class that all payload classes must subclass. Defines:
 
 ## Adding a new exploit
 
-1. Create `flowhound/vulnerabilities/exploits/cve_XXXX_NNNNN.py`.
+1. Create `flowhound/vulnerabilities/exploits/<app>/cve_XXXX_NNNNN.py`.
 2. Define a class named `Exploit` that subclasses `ExploitBaseClass`.
-3. Declare `_client_class` pointing to the correct `TargetClient` subclass (e.g. `_client_class = MLflowClient`).
+3. Declare `_client_class` pointing to the correct `TargetClient` subclass (e.g. `_client_class = LangflowClient`).
 4. Implement the `exploit(self, base_url, username, password, proxies, payload) -> bool` method.
 5. Use `self.auto_login()` or `self.authenticate()` for authentication as appropriate.
 6. Use `payload.load_payload()` when a payload is provided; fall back to a built-in default otherwise.
 7. Add a corresponding record to `vulnerabilities.json` — see [Vulnerability Database](vulnerabilities.md#adding-a-new-vulnerability).
 8. Add tests in `flowhound/tests/`.
+
+---
+
+## Adding an auxiliary module
+
+1. Create `flowhound/vulnerabilities/auxiliary/<app>/cve_XXXX_NNNNN.py`.
+2. Define a class named `Auxiliary` that subclasses `AuxiliaryBaseClass`.
+3. Declare `_client_class` pointing to the correct `TargetClient` subclass (e.g. `_client_class = MLflowClient`).
+4. Implement the `run(self, base_url, f_path, username, password, proxies, **kwargs) -> bool` method.
+5. Add a corresponding record with `"module_type": "auxiliary"` to `vulnerabilities.json`.
+6. Add tests in `flowhound/tests/`.
 
 ---
 

@@ -51,7 +51,7 @@ After installation, verify the CLI is available:
 flowhound --help
 ```
 
-Expected output includes the `attack` and `sniff` sub-commands:
+Expected output includes the `attack`, `scan`, and `sniff` sub-commands:
 
 ```
 Usage: flowhound [OPTIONS] COMMAND [ARGS]...
@@ -61,6 +61,7 @@ Options:
 
 Commands:
   attack  Launch one or more exploits against a target instance.
+  scan    Launch an auxiliary module against a target instance.
   sniff   Detect target application and list known exploits.
 ```
 

