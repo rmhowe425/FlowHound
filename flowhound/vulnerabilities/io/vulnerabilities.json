@@ -142,17 +142,5 @@
         "module_class": "Auxiliary",
         "module_type": "auxiliary",
         "auth_required": true
-    },
-    {
-        "application": "mlflow",
-        "cve_id": "CVE-2023-6977",
-        "cve_description": "Authenticated path traversal / arbitrary file read via the MLflow model registry artifact download endpoint",
-        "cvss_severity": 7.5,
-        "min_impacted_version": [1, 0, 0],
-        "max_impacted_version": [2, 9, 1],
-        "module": "flowhound.vulnerabilities.auxiliary.mlflow.cve_2023_6977",
-        "module_class": "Auxiliary",
-        "module_type": "auxiliary",
-        "auth_required": true
     }
 ]

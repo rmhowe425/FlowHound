@@ -339,18 +339,20 @@ def test_validate_file_path_absolute_returns_value():
     )
 
 
-def test_validate_file_path_relative_raises():
+def test_validate_file_path_relative_returns_value():
     from flowhound.cli.validators import validate_file_path
 
-    with pytest.raises(click.BadParameter, match="absolute path"):
-        validate_file_path(ctx=None, param=None, value="etc/passwd")
+    assert (
+        validate_file_path(ctx=None, param=None, value="../../../../etc/passwd")
+        == "../../../../etc/passwd"
+    )
 
 
-def test_validate_file_path_no_leading_slash_raises():
+def test_validate_file_path_empty_string_raises():
     from flowhound.cli.validators import validate_file_path
 
-    with pytest.raises(click.BadParameter, match="absolute path"):
-        validate_file_path(ctx=None, param=None, value="passwd")
+    with pytest.raises(click.BadParameter, match="cannot be empty"):
+        validate_file_path(ctx=None, param=None, value="   ")
 
 
 # ===========================================================================
@@ -358,20 +360,20 @@ def test_validate_file_path_no_leading_slash_raises():
 # ===========================================================================
 
 
-@given(st.text(min_size=1).filter(lambda s: not s.startswith("/")))
+@given(st.text().filter(lambda s: not s.strip()))
 @settings(max_examples=200)
-def test_validate_file_path_rejects_all_non_absolute(value):
-    """validate_file_path raises BadParameter for any path not starting with /."""
+def test_validate_file_path_rejects_empty_whitespace(value):
+    """validate_file_path raises BadParameter for empty or whitespace-only paths."""
     from flowhound.cli.validators import validate_file_path
 
     with pytest.raises(click.BadParameter):
         validate_file_path(ctx=None, param=None, value=value)
 
 
-@given(st.from_regex(r"/[a-z/._-]{1,50}", fullmatch=True))
+@given(st.text(min_size=1).filter(lambda s: bool(s.strip())))
 @settings(max_examples=200)
-def test_validate_file_path_accepts_all_absolute(value):
-    """validate_file_path returns the value unchanged for any absolute path."""
+def test_validate_file_path_accepts_non_empty_paths(value):
+    """validate_file_path returns the value unchanged for any non-empty path."""
     from flowhound.cli.validators import validate_file_path
 
     assert validate_file_path(ctx=None, param=None, value=value) == value
