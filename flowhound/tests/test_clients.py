@@ -161,6 +161,45 @@ def test_mlflow_authenticate_network_error_raises_runtime_error():
             client.authenticate(username="admin", password="secret")
 
 
+def test_mlflow_auto_login_success():
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+
+    with patch(
+        "flowhound.vulnerabilities.clients.mlflow.get",
+        return_value=mock_resp,
+    ):
+        client = MLflowClient(base_url="http://localhost:5000")
+        headers = client.auto_login()
+
+    assert headers is not None
+    assert headers["Content-Type"] == "application/json"
+
+
+def test_mlflow_auto_login_non_200_returns_none():
+    mock_resp = MagicMock()
+    mock_resp.status_code = 401
+
+    with patch(
+        "flowhound.vulnerabilities.clients.mlflow.get",
+        return_value=mock_resp,
+    ):
+        client = MLflowClient(base_url="http://localhost:5000")
+        result = client.auto_login()
+
+    assert result is None
+
+
+def test_mlflow_auto_login_network_error_raises_runtime_error():
+    with patch(
+        "flowhound.vulnerabilities.clients.mlflow.get",
+        side_effect=ConnectionError("refused"),
+    ):
+        client = MLflowClient(base_url="http://localhost:5000")
+        with pytest.raises(RuntimeError, match="Error querying MLflow API"):
+            client.auto_login()
+
+
 # ---------------------------------------------------------------------------
 # TargetClient.handle_authentication — no-credentials warning branch
 # ---------------------------------------------------------------------------
