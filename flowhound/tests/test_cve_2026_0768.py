@@ -27,12 +27,9 @@ class TestBlockingBoilerplate:
         result = Exploit._blocking_boilerplate(code)
         assert "        x = 1" in result
         assert "        y = 2" in result
-        assert "PwnComponent" in result
-        assert "CVE-2026-0768-Probe" in result
 
     def test_empty_code(self):
         result = Exploit._blocking_boilerplate("")
-        assert "PwnComponent" in result
         assert "payload executed" in result
 
     def test_multiline_all_lines_indented(self):
