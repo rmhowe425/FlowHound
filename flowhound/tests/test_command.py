@@ -4,10 +4,13 @@ import click
 import pytest
 from click.testing import CliRunner
 
-from flowhound.cli.command import _get_payload, attack, scan, sniff
+from flowhound.cli.command import _get_payload, _probe_bind_shell, attack, scan, sniff
 from flowhound.vulnerabilities.auxiliary.base_auxiliary_class import AuxiliaryBaseClass
 from flowhound.vulnerabilities.exploits.base_exploit_class import ExploitBaseClass
 from flowhound.vulnerabilities.io.database import Database
+from flowhound.vulnerabilities.payloads.bind_tcp_shell import (
+    Payload as BindTcpShellPayload,
+)
 from flowhound.vulnerabilities.payloads.execute_bash_command import (
     Payload as CommandPayload,
 )
@@ -21,33 +24,97 @@ from flowhound.vulnerabilities.payloads.reverse_tcp_shell import (
 
 
 def test_get_payload_returns_none_when_no_args():
-    result = _get_payload(cmd=None, reverse_shell=None)
+    result = _get_payload(
+        cmd=None, reverse_shell=None, bind_shell=None, bind_langflow_http=None
+    )
     assert result is None
 
 
 def test_get_payload_command_returns_command_payload():
-    result = _get_payload(cmd="id", reverse_shell=None)
+    result = _get_payload(
+        cmd="id", reverse_shell=None, bind_shell=None, bind_langflow_http=None
+    )
     assert isinstance(result, CommandPayload)
 
 
 def test_get_payload_reverse_shell_returns_reverse_shell_payload():
-    result = _get_payload(cmd=None, reverse_shell="192.168.1.10:4444")
+    result = _get_payload(
+        cmd=None,
+        reverse_shell="192.168.1.10:4444",
+        bind_shell=None,
+        bind_langflow_http=None,
+    )
     assert isinstance(result, ReverseTcpShellPayload)
 
 
 def test_get_payload_reverse_shell_invalid_format_raises():
-    with pytest.raises(click.BadParameter, match="LHOST:LPORT"):
-        _get_payload(cmd=None, reverse_shell="no-colon-here")
+    with pytest.raises(click.BadParameter, match="HOST:PORT"):
+        _get_payload(
+            cmd=None,
+            reverse_shell="no-colon-here",
+            bind_shell=None,
+            bind_langflow_http=None,
+        )
 
 
 def test_get_payload_reverse_shell_invalid_port_raises():
     with pytest.raises(click.BadParameter, match="Port must be between"):
-        _get_payload(cmd=None, reverse_shell="192.168.1.10:99999")
+        _get_payload(
+            cmd=None,
+            reverse_shell="192.168.1.10:99999",
+            bind_shell=None,
+            bind_langflow_http=None,
+        )
 
 
 def test_get_payload_reverse_shell_port_zero_raises():
     with pytest.raises(click.BadParameter, match="Port must be between"):
-        _get_payload(cmd=None, reverse_shell="192.168.1.10:0")
+        _get_payload(
+            cmd=None,
+            reverse_shell="192.168.1.10:0",
+            bind_shell=None,
+            bind_langflow_http=None,
+        )
+
+
+def test_get_payload_bind_shell_returns_bind_shell_payload():
+    result = _get_payload(
+        cmd=None,
+        reverse_shell=None,
+        bind_shell="10.0.0.5:5555",
+        bind_langflow_http=None,
+    )
+    assert isinstance(result, BindTcpShellPayload)
+
+
+def test_get_payload_bind_shell_invalid_format_raises():
+    with pytest.raises(click.BadParameter, match="HOST:PORT"):
+        _get_payload(
+            cmd=None,
+            reverse_shell=None,
+            bind_shell="no-colon-here",
+            bind_langflow_http=None,
+        )
+
+
+def test_get_payload_bind_shell_invalid_port_raises():
+    with pytest.raises(click.BadParameter, match="Port must be between"):
+        _get_payload(
+            cmd=None,
+            reverse_shell=None,
+            bind_shell="10.0.0.5:99999",
+            bind_langflow_http=None,
+        )
+
+
+def test_get_payload_bind_shell_port_zero_raises():
+    with pytest.raises(click.BadParameter, match="Port must be between"):
+        _get_payload(
+            cmd=None,
+            reverse_shell=None,
+            bind_shell="10.0.0.5:0",
+            bind_langflow_http=None,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -494,8 +561,8 @@ def test_exploit_timeout_continues_to_next():
     assert result.exit_code == 0
 
 
-def test_exploit_timeout_blocking_payload_reports_success(caplog):
-    """FutureTimeoutError with a blocking payload should be treated as success."""
+def test_exploit_timeout_blocking_payload_treated_as_success(caplog):
+    """FutureTimeoutError with a blocking (non-bind) payload is treated as success."""
     import logging
     from concurrent.futures import TimeoutError as FutureTimeoutError
 
@@ -531,7 +598,7 @@ def test_exploit_timeout_blocking_payload_reports_success(caplog):
             obj=db,
         )
     assert result.exit_code == 0
-    assert "blocking payload is still executing" in caplog.text
+    assert "Exploitation successful" in caplog.text
 
 
 def test_exploit_timeout_non_blocking_payload_reports_skip(caplog):
@@ -841,3 +908,143 @@ def test_get_auxiliary_modules_runtime_error_raises_click_exception():
 
     assert result.exit_code != 0
     assert "Error retrieving auxiliary module" in result.output
+
+
+# ---------------------------------------------------------------------------
+# _probe_bind_shell
+# ---------------------------------------------------------------------------
+
+
+def test_probe_bind_shell_returns_true_when_port_open():
+    """connect_ex returning 0 means the port is open — probe returns True."""
+    with patch("flowhound.cli.command.socket.socket") as mock_socket_cls:
+        mock_sock = MagicMock()
+        mock_sock.connect_ex.return_value = 0
+        mock_socket_cls.return_value.__enter__.return_value = mock_sock
+
+        assert _probe_bind_shell("10.0.0.5", 5555) is True
+        mock_sock.connect_ex.assert_called_once_with(("10.0.0.5", 5555))
+
+
+def test_probe_bind_shell_returns_false_when_port_closed():
+    """connect_ex returning non-zero means the port is closed — probe returns False."""
+    with patch("flowhound.cli.command.socket.socket") as mock_socket_cls:
+        mock_sock = MagicMock()
+        mock_sock.connect_ex.return_value = 111  # ECONNREFUSED
+        mock_socket_cls.return_value.__enter__.return_value = mock_sock
+
+        assert _probe_bind_shell("10.0.0.5", 5555) is False
+
+
+def test_probe_bind_shell_sets_timeout():
+    """probe passes the timeout to settimeout."""
+    with patch("flowhound.cli.command.socket.socket") as mock_socket_cls:
+        mock_sock = MagicMock()
+        mock_sock.connect_ex.return_value = 0
+        mock_socket_cls.return_value.__enter__.return_value = mock_sock
+
+        _probe_bind_shell("10.0.0.5", 5555, timeout=3)
+        mock_sock.settimeout.assert_called_once_with(3)
+
+
+# ---------------------------------------------------------------------------
+# _run_exploits — bind_shell probe branches
+# ---------------------------------------------------------------------------
+
+
+def _make_bind_shell_attack_invocation(
+    runner, db, bind_shell_value, probe_result, exploit_side_effect=None
+):
+    """Helper: invoke attack with --bind_shell and a mocked probe return value.
+
+    exploit_side_effect: if set, _execute_exploit raises this instead of returning True.
+    """
+    mock_vuln = MagicMock()
+    mock_vuln.cve_id = "CVE-2026-9999"
+    mock_vuln.application = "langflow"
+    mock_vuln.min_impacted_version = "1.0.0"
+    mock_vuln.max_impacted_version = "2.0.0"
+    mock_vuln.get_module_instance.return_value = MagicMock(spec=ExploitBaseClass)
+    db.retrieve_vulnerabilities.return_value = [mock_vuln]
+
+    exploit_mock = (
+        MagicMock(side_effect=exploit_side_effect)
+        if exploit_side_effect is not None
+        else MagicMock(return_value=True)
+    )
+
+    with (
+        patch(
+            "flowhound.cli.command.detect_target", return_value=("langflow", "1.0.0")
+        ),
+        patch("flowhound.cli.command._execute_exploit", exploit_mock),
+        patch("flowhound.cli.command._probe_bind_shell", return_value=probe_result),
+    ):
+        return runner.invoke(
+            attack,
+            ["--url", "http://localhost:7860", "--bind_shell", bind_shell_value],
+            obj=db,
+        )
+
+
+def test_bind_shell_exploit_succeeds_probe_open_reports_live(caplog):
+    """Exploit returns True and probe open — bind shell is live."""
+    import logging
+
+    runner = CliRunner()
+    db = MagicMock(spec=Database)
+
+    with caplog.at_level(logging.INFO, logger="flowhound.cli.command"):
+        result = _make_bind_shell_attack_invocation(runner, db, "10.0.0.5:5555", True)
+
+    assert result.exit_code == 0
+    assert "bind shell is live" in caplog.text
+    assert "10.0.0.5:5555" in caplog.text
+
+
+def test_bind_shell_exploit_succeeds_probe_closed_reports_failure(caplog):
+    """Exploit returns True but probe fails — payload ran but port unreachable."""
+    import logging
+
+    runner = CliRunner()
+    db = MagicMock(spec=Database)
+
+    with caplog.at_level(logging.WARNING, logger="flowhound.cli.command"):
+        result = _make_bind_shell_attack_invocation(runner, db, "10.0.0.5:5555", False)
+
+    assert result.exit_code == 0
+    assert "not reachable" in caplog.text
+
+
+def test_bind_shell_timeout_probe_open_reports_live(caplog):
+    """FutureTimeoutError on bind shell + probe open — shell is live."""
+    import logging
+    from concurrent.futures import TimeoutError as FutureTimeoutError
+
+    runner = CliRunner()
+    db = MagicMock(spec=Database)
+
+    with caplog.at_level(logging.INFO, logger="flowhound.cli.command"):
+        result = _make_bind_shell_attack_invocation(
+            runner, db, "10.0.0.5:5555", True, exploit_side_effect=FutureTimeoutError()
+        )
+
+    assert result.exit_code == 0
+    assert "bind shell is live" in caplog.text
+
+
+def test_bind_shell_timeout_probe_closed_reports_failure(caplog):
+    """FutureTimeoutError on bind shell + probe closed — bind shell failed."""
+    import logging
+    from concurrent.futures import TimeoutError as FutureTimeoutError
+
+    runner = CliRunner()
+    db = MagicMock(spec=Database)
+
+    with caplog.at_level(logging.WARNING, logger="flowhound.cli.command"):
+        result = _make_bind_shell_attack_invocation(
+            runner, db, "10.0.0.5:5555", False, exploit_side_effect=FutureTimeoutError()
+        )
+
+    assert result.exit_code == 0
+    assert "not reachable" in caplog.text

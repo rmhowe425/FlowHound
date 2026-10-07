@@ -152,42 +152,148 @@ def test_validate_authentication_only_password_raises():
 def test_validate_payload_args_none():
     from flowhound.cli.validators import validate_payload_args
 
-    assert validate_payload_args(None, None) is None
+    assert validate_payload_args(None, None, None) is None
 
 
-def test_validate_payload_args_cmd():
+def test_validate_payload_args_cmd_only():
     from flowhound.cli.validators import validate_payload_args
 
-    assert validate_payload_args("id", None) is None
+    assert validate_payload_args("id", None, None) is None
+
+
+# reverse_shell
 
 
 def test_validate_payload_args_reverse_shell_valid():
     from flowhound.cli.validators import validate_payload_args
 
-    assert validate_payload_args(None, "192.168.1.10:4444") == ("192.168.1.10", 4444)
+    assert validate_payload_args(None, "192.168.1.10:4444", None) == (
+        "192.168.1.10",
+        4444,
+    )
 
 
-def test_validate_payload_args_mutually_exclusive():
+def test_validate_payload_args_cmd_and_reverse_shell_mutually_exclusive():
     from flowhound.cli.validators import validate_payload_args
 
     with pytest.raises(click.UsageError):
-        validate_payload_args("id", "192.168.1.10:4444")
+        validate_payload_args("id", "192.168.1.10:4444", None)
 
 
-def test_validate_payload_args_invalid_format():
+def test_validate_payload_args_reverse_shell_invalid_format():
     from flowhound.cli.validators import validate_payload_args
 
     with pytest.raises(click.BadParameter):
-        validate_payload_args(None, "invalid-format")
+        validate_payload_args(None, "invalid-format", None)
 
 
-def test_validate_payload_args_invalid_port():
+def test_validate_payload_args_reverse_shell_invalid_port():
     from flowhound.cli.validators import validate_payload_args
 
     with pytest.raises(click.BadParameter):
-        validate_payload_args(None, "192.168.1.10:99999")
+        validate_payload_args(None, "192.168.1.10:99999", None)
     with pytest.raises(click.BadParameter):
-        validate_payload_args(None, "192.168.1.10:0")
+        validate_payload_args(None, "192.168.1.10:0", None)
+
+
+# bind_shell
+
+
+def test_validate_payload_args_bind_shell_valid():
+    from flowhound.cli.validators import validate_payload_args
+
+    assert validate_payload_args(None, None, "10.0.0.5:5555") == ("10.0.0.5", 5555)
+
+
+def test_validate_payload_args_cmd_and_bind_shell_mutually_exclusive():
+    from flowhound.cli.validators import validate_payload_args
+
+    with pytest.raises(click.UsageError):
+        validate_payload_args("id", None, "10.0.0.5:5555")
+
+
+def test_validate_payload_args_reverse_shell_and_bind_shell_mutually_exclusive():
+    from flowhound.cli.validators import validate_payload_args
+
+    with pytest.raises(click.UsageError):
+        validate_payload_args(None, "192.168.1.10:4444", "10.0.0.5:5555")
+
+
+def test_validate_payload_args_bind_shell_invalid_format():
+    from flowhound.cli.validators import validate_payload_args
+
+    with pytest.raises(click.BadParameter):
+        validate_payload_args(None, None, "invalid-format")
+
+
+def test_validate_payload_args_bind_shell_invalid_port():
+    from flowhound.cli.validators import validate_payload_args
+
+    with pytest.raises(click.BadParameter):
+        validate_payload_args(None, None, "10.0.0.5:99999")
+    with pytest.raises(click.BadParameter):
+        validate_payload_args(None, None, "10.0.0.5:0")
+
+
+def test_validate_payload_args_bind_shell_wildcard_host_raises():
+    from flowhound.cli.validators import validate_payload_args
+
+    with pytest.raises(click.BadParameter, match="victim's reachable IP"):
+        validate_payload_args(None, None, "0.0.0.0:4444")
+
+
+# bind_langflow_http
+
+
+def test_validate_payload_args_bind_langflow_http_valid():
+    from flowhound.cli.validators import validate_payload_args
+
+    assert validate_payload_args(None, None, None, "192.168.1.30:7860") == (
+        "192.168.1.30",
+        7860,
+    )
+
+
+def test_validate_payload_args_bind_langflow_http_mutually_exclusive_with_cmd():
+    from flowhound.cli.validators import validate_payload_args
+
+    with pytest.raises(click.UsageError):
+        validate_payload_args("id", None, None, "192.168.1.30:7860")
+
+
+def test_validate_payload_args_bind_langflow_http_mutually_exclusive_with_reverse_shell():
+    from flowhound.cli.validators import validate_payload_args
+
+    with pytest.raises(click.UsageError):
+        validate_payload_args(None, "192.168.1.10:4444", None, "192.168.1.30:7860")
+
+
+def test_validate_payload_args_bind_langflow_http_mutually_exclusive_with_bind_shell():
+    from flowhound.cli.validators import validate_payload_args
+
+    with pytest.raises(click.UsageError):
+        validate_payload_args(None, None, "192.168.1.30:4444", "192.168.1.30:7860")
+
+
+def test_validate_payload_args_bind_langflow_http_invalid_format():
+    from flowhound.cli.validators import validate_payload_args
+
+    with pytest.raises(click.BadParameter, match="HOST:PORT"):
+        validate_payload_args(None, None, None, "invalid-format")
+
+
+def test_validate_payload_args_bind_langflow_http_invalid_port():
+    from flowhound.cli.validators import validate_payload_args
+
+    with pytest.raises(click.BadParameter, match="Port must be between"):
+        validate_payload_args(None, None, None, "192.168.1.30:99999")
+
+
+def test_validate_payload_args_bind_langflow_http_wildcard_host_raises():
+    from flowhound.cli.validators import validate_payload_args
+
+    with pytest.raises(click.BadParameter, match="victim's reachable IP"):
+        validate_payload_args(None, None, None, "0.0.0.0:7860")
 
 
 # ===========================================================================
@@ -383,29 +489,47 @@ def test_validate_file_path_accepts_non_empty_paths(value):
 # Hypothesis — validate_payload_args port range contract
 # ===========================================================================
 
+_shell_host = st.from_regex(r"[a-z0-9]{1,20}\.[a-z]{2,4}", fullmatch=True)
+_valid_port = st.integers(min_value=1, max_value=65535)
+_invalid_port = st.integers().filter(lambda p: not (1 <= p <= 65535))
 
-@given(
-    host=st.from_regex(r"[a-z0-9]{1,20}\.[a-z]{2,4}", fullmatch=True),
-    port=st.integers(min_value=1, max_value=65535),
-)
-def test_validate_payload_args_valid_port_always_succeeds(host, port):
-    """Any valid LHOST:PORT in [1, 65535] is accepted and parsed correctly."""
+
+@given(host=_shell_host, port=_valid_port)
+def test_validate_payload_args_reverse_shell_valid_port_always_succeeds(host, port):
+    """Any valid HOST:PORT in [1, 65535] is accepted for --reverse_shell."""
     from flowhound.cli.validators import validate_payload_args
 
-    result = validate_payload_args(None, f"{host}:{port}")
+    result = validate_payload_args(None, f"{host}:{port}", None)
     assert result == (host, port)
 
 
-@given(
-    host=st.from_regex(r"[a-z0-9]{1,20}\.[a-z]{2,4}", fullmatch=True),
-    port=st.integers().filter(lambda p: not (1 <= p <= 65535)),
-)
-def test_validate_payload_args_out_of_range_port_always_raises(host, port):
-    """Any port outside [1, 65535] always raises click.BadParameter."""
+@given(host=_shell_host, port=_invalid_port)
+def test_validate_payload_args_reverse_shell_out_of_range_port_always_raises(
+    host, port
+):
+    """Any port outside [1, 65535] raises click.BadParameter for --reverse_shell."""
     from flowhound.cli.validators import validate_payload_args
 
     with pytest.raises(click.BadParameter):
-        validate_payload_args(None, f"{host}:{port}")
+        validate_payload_args(None, f"{host}:{port}", None)
+
+
+@given(host=_shell_host, port=_valid_port)
+def test_validate_payload_args_bind_shell_valid_port_always_succeeds(host, port):
+    """Any valid HOST:PORT in [1, 65535] is accepted for --bind_shell."""
+    from flowhound.cli.validators import validate_payload_args
+
+    result = validate_payload_args(None, None, f"{host}:{port}")
+    assert result == (host, port)
+
+
+@given(host=_shell_host, port=_invalid_port)
+def test_validate_payload_args_bind_shell_out_of_range_port_always_raises(host, port):
+    """Any port outside [1, 65535] raises click.BadParameter for --bind_shell."""
+    from flowhound.cli.validators import validate_payload_args
+
+    with pytest.raises(click.BadParameter):
+        validate_payload_args(None, None, f"{host}:{port}")
 
 
 # ===========================================================================

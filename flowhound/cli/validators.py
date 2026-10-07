@@ -86,33 +86,62 @@ def validate_authentication(username: str | None, password: str | None) -> bool:
 
 
 def validate_payload_args(
-    cmd: str | None, reverse_shell: str | None
+    cmd: str | None,
+    reverse_shell: str | None,
+    bind_shell: str | None,
+    bind_langflow_http: str | None = None,
 ) -> tuple[str, int] | None:
-    """Validate command and reverse_shell arguments.
+    """Validate command, reverse_shell, bind_shell, and bind_langflow_http arguments.
 
     Returns:
-        tuple[str, int]: (lhost, lport) if reverse_shell is valid.
-        None: if cmd is provided or neither is provided.
+        tuple[str, int]: (host, port) if a shell option is valid.
+        None: if cmd is provided or no shell option is provided.
 
     Raises:
-        click.UsageError: If both cmd and reverse_shell are provided.
-        click.BadParameter: If reverse_shell has invalid format or port range.
+        click.UsageError: If mutually exclusive options are combined.
+        click.BadParameter: If the shell option has an invalid format or port range.
     """
-    if cmd and reverse_shell:
-        raise click.UsageError("--command and --reverse_shell are mutually exclusive.")
+    shell_flags = {
+        "--command": cmd,
+        "--reverse_shell": reverse_shell,
+        "--bind_shell": bind_shell,
+        "--bind_langflow_http": bind_langflow_http,
+    }
+    active = [name for name, val in shell_flags.items() if val]
+    if len(active) > 1:
+        raise click.UsageError(f"{' and '.join(active)} are mutually exclusive.")
 
-    if reverse_shell:
-        try:
-            lhost, lport_str = reverse_shell.rsplit(":", 1)
-            lport = int(lport_str)
-        except ValueError:
-            raise click.BadParameter(
-                "--reverse_shell must be formatted as LHOST:LPORT (e.g. 192.168.1.10:4444)."
-            )
+    shell_value, flag_name = (
+        (reverse_shell, "--reverse_shell")
+        if reverse_shell
+        else (bind_shell, "--bind_shell")
+        if bind_shell
+        else (bind_langflow_http, "--bind_langflow_http")
+        if bind_langflow_http
+        else (None, None)
+    )
 
-        if not (1 <= lport <= 65535):
-            raise click.BadParameter("Port must be between 1 and 65535.")
+    if shell_value is None:
+        return None
 
-        return lhost, lport
+    try:
+        host, port_str = shell_value.rsplit(":", 1)
+        port = int(port_str)
+    except ValueError:
+        raise click.BadParameter(
+            f"{flag_name} must be formatted as HOST:PORT (e.g. 192.168.1.10:4444)."
+        )
 
-    return None
+    if not (1 <= port <= 65535):
+        raise click.BadParameter("Port must be between 1 and 65535.")
+
+    if flag_name in ("--bind_shell", "--bind_langflow_http") and host in (
+        "0.0.0.0",
+        "",
+    ):
+        raise click.BadParameter(
+            f"{flag_name} HOST must be the victim's reachable IP address, not a wildcard. "
+            f"Example: {flag_name} 192.168.1.30:7860"
+        )
+
+    return host, port
