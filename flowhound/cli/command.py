@@ -3,6 +3,7 @@ import socket
 import time
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeoutError
+from datetime import datetime, timezone
 
 import click
 import requests
@@ -21,6 +22,7 @@ from flowhound.vulnerabilities.auxiliary.base_auxiliary_class import AuxiliaryBa
 from flowhound.vulnerabilities.cve.cve import ModuleType
 from flowhound.vulnerabilities.exploits.base_exploit_class import ExploitBaseClass
 from flowhound.vulnerabilities.io.database import Database
+from flowhound.vulnerabilities.io.report_generation import generate_report
 from flowhound.vulnerabilities.io.version_detection import detect_target
 from flowhound.vulnerabilities.payloads import PAYLOAD_MAP
 from flowhound.vulnerabilities.payloads.bind_langflow_http_shell import (
@@ -255,10 +257,11 @@ def _run_exploits(
     proxy: dict[str, str] | None,
     payload,
     autopwn: bool,
-) -> None:
+) -> list[dict]:
     logger.info(
         f"{len(vuln_lst)} exploit(s) detected. Prioritizing unauth RCE exploits."
     )
+    findings: list[dict] = []
     for vuln in vuln_lst:
         click.echo("")
         logger.info(
@@ -337,9 +340,44 @@ def _run_exploits(
                 )
                 result = False
 
+        if isinstance(payload, BindTcpShellPayload):
+            _payload_detail = f"{payload.rhost}:{payload.rport}"
+        elif isinstance(payload, BindLangflowHttpShellPayload):
+            _payload_detail = (
+                f"{payload.rhost}:{payload.rport}{BIND_LANGFLOW_HTTP_ROUTE}"
+            )
+        elif payload is not None:
+            # ReverseTcpShell and ExecuteBashCommand both expose their key args
+            # via lhost/lport or raw_command respectively.
+            _payload_detail = getattr(payload, "raw_command", None) or (
+                f"{payload.lhost}:{payload.lport}"
+                if hasattr(payload, "lhost")
+                else None
+            )
+        else:
+            _payload_detail = None
+
+        findings.append(
+            {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "target": url,
+                "exploit": vuln.cve_id,
+                "description": vuln.cve_description,
+                "cvss_severity": vuln.cvss_severity,
+                "auth_required": vuln.auth_required,
+                "affected_versions": f"{vuln.min_impacted_version} – {vuln.max_impacted_version}",
+                "payload_type": type(payload).__name__ if payload else None,
+                "payload_detail": _payload_detail,
+                "payload_output": exploit_module.output,
+                "success": result,
+            }
+        )
+
         if not autopwn and result:
             logger.info("Exploitation successful. Stopping at first attempt.")
             break
+
+    return findings
 
 
 @click.command(help="Launch one or more exploits against a target instance.")
@@ -388,6 +426,12 @@ def _run_exploits(
     help="RHOST:RPORT Inject an HTTP shell onto the victim's existing web port (e.g. 192.168.1.30:7860).",
 )
 @click.option(
+    "--report",
+    required=False,
+    default=None,
+    help="Write a report of exploit results to this file (e.g. report.json, report.csv, report.xlsx).",
+)
+@click.option(
     "--application",
     required=False,
     default=None,
@@ -413,6 +457,7 @@ def attack(
     reverse_shell: str | None,
     bind_shell: str | None,
     bind_langflow_http: str | None,
+    report: str | None,
     application: str | None,
     cve: str | None,
 ):
@@ -443,7 +488,7 @@ def attack(
         cve=cve,
     )
 
-    _run_exploits(
+    findings = _run_exploits(
         vuln_lst=vuln_lst,
         url=url,
         username=username,
@@ -452,6 +497,9 @@ def attack(
         payload=payload,
         autopwn=autopwn,
     )
+
+    if report:
+        generate_report(findings, report)
 
 
 @click.command(help="Detect target application and list known exploits.")
