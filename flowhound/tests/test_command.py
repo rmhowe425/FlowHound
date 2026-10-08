@@ -231,7 +231,7 @@ def test_attack_stops_after_first_success_without_autopwn():
     mock_vuln.cve_id = "CVE-2026-9999"
     mock_vuln.min_impacted_version = "1.0.0"
     mock_vuln.max_impacted_version = "1.10.0"
-    mock_exploit = MagicMock(spec=ExploitBaseClass)
+    mock_exploit = MagicMock(spec=ExploitBaseClass, output=None)
     mock_exploit.exploit.return_value = True
     mock_vuln.get_module_instance.return_value = mock_exploit
 
@@ -262,7 +262,7 @@ def test_attack_continues_with_autopwn():
     mock_vuln.cve_id = "CVE-2026-9999"
     mock_vuln.min_impacted_version = "1.0.0"
     mock_vuln.max_impacted_version = "1.10.0"
-    mock_exploit = MagicMock(spec=ExploitBaseClass)
+    mock_exploit = MagicMock(spec=ExploitBaseClass, output=None)
     mock_vuln.get_module_instance.return_value = mock_exploit
 
     db = _make_db_with_vulns([mock_vuln, mock_vuln])
@@ -543,7 +543,9 @@ def test_exploit_timeout_continues_to_next():
     mock_vuln.application = "langflow"
     mock_vuln.min_impacted_version = "1.0.0"
     mock_vuln.max_impacted_version = "2.0.0"
-    mock_vuln.get_module_instance.return_value = MagicMock(spec=ExploitBaseClass)
+    mock_vuln.get_module_instance.return_value = MagicMock(
+        spec=ExploitBaseClass, output=None
+    )
 
     db = MagicMock(spec=Database)
     db.retrieve_vulnerabilities.return_value = [mock_vuln]
@@ -572,7 +574,9 @@ def test_exploit_timeout_blocking_payload_treated_as_success(caplog):
     mock_vuln.application = "langflow"
     mock_vuln.min_impacted_version = "1.0.0"
     mock_vuln.max_impacted_version = "2.0.0"
-    mock_vuln.get_module_instance.return_value = MagicMock(spec=ExploitBaseClass)
+    mock_vuln.get_module_instance.return_value = MagicMock(
+        spec=ExploitBaseClass, output=None
+    )
 
     db = MagicMock(spec=Database)
     db.retrieve_vulnerabilities.return_value = [mock_vuln]
@@ -612,7 +616,9 @@ def test_exploit_timeout_non_blocking_payload_reports_skip(caplog):
     mock_vuln.application = "langflow"
     mock_vuln.min_impacted_version = "1.0.0"
     mock_vuln.max_impacted_version = "2.0.0"
-    mock_vuln.get_module_instance.return_value = MagicMock(spec=ExploitBaseClass)
+    mock_vuln.get_module_instance.return_value = MagicMock(
+        spec=ExploitBaseClass, output=None
+    )
 
     db = MagicMock(spec=Database)
     db.retrieve_vulnerabilities.return_value = [mock_vuln]
@@ -665,7 +671,9 @@ def test_attack_cve_flag_calls_search_vulnerabilities():
     runner = CliRunner()
     db = MagicMock(spec=Database)
     mock_vuln = MagicMock()
-    mock_vuln.get_module_instance.return_value = MagicMock(spec=ExploitBaseClass)
+    mock_vuln.get_module_instance.return_value = MagicMock(
+        spec=ExploitBaseClass, output=None
+    )
     db.search_vulnerabilities.return_value = [mock_vuln]
 
     with patch(
@@ -857,7 +865,7 @@ def test_scan_raises_when_module_is_not_auxiliary():
     mock_vuln.cve_id = "cve-2026-9198"
 
     # Return an exploit instance instead of an auxiliary
-    mock_module = MagicMock(spec=ExploitBaseClass)
+    mock_module = MagicMock(spec=ExploitBaseClass, output=None)
     mock_vuln.get_module_instance.return_value = mock_module
 
     db = MagicMock(spec=Database)
@@ -964,7 +972,9 @@ def _make_bind_shell_attack_invocation(
     mock_vuln.application = "langflow"
     mock_vuln.min_impacted_version = "1.0.0"
     mock_vuln.max_impacted_version = "2.0.0"
-    mock_vuln.get_module_instance.return_value = MagicMock(spec=ExploitBaseClass)
+    mock_vuln.get_module_instance.return_value = MagicMock(
+        spec=ExploitBaseClass, output=None
+    )
     db.retrieve_vulnerabilities.return_value = [mock_vuln]
 
     exploit_mock = (

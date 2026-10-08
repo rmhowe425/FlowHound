@@ -310,7 +310,9 @@ def _make_bind_langflow_http_invocation(
     mock_vuln.application = "langflow"
     mock_vuln.min_impacted_version = "1.0.0"
     mock_vuln.max_impacted_version = "2.0.0"
-    mock_vuln.get_module_instance.return_value = MagicMock(spec=ExploitBaseClass)
+    mock_vuln.get_module_instance.return_value = MagicMock(
+        spec=ExploitBaseClass, output=None
+    )
     db.retrieve_vulnerabilities.return_value = [mock_vuln]
 
     exploit_mock = (
