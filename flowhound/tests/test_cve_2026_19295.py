@@ -57,6 +57,39 @@ def _empty_stream_ctx():
 # ---------------------------------------------------------------------------
 
 
+class TestBlockingBoilerplate:
+    def test_indents_code(self):
+        component_code, _ = Exploit._blocking_boilerplate("x = 1\ny = 2")
+        assert "        x = 1" in component_code
+        assert "        y = 2" in component_code
+
+    def test_returns_matching_method_name(self):
+        """The method name in the source must match the returned method_name."""
+        component_code, method_name = Exploit._blocking_boilerplate("pass")
+        assert f"def {method_name}" in component_code
+        assert f"method='{method_name}'" in component_code
+
+    def test_identifiers_are_randomized(self):
+        """Each call must produce a different method name."""
+        _, method_a = Exploit._blocking_boilerplate("pass")
+        _, method_b = Exploit._blocking_boilerplate("pass")
+        assert method_a != method_b
+
+
+class TestNonblockingBoilerplate:
+    def test_returns_matching_method_name(self):
+        """The method name in the source must match the returned method_name."""
+        boilerplate, method_name = Exploit._nonblocking_boilerplate()
+        assert f"def {method_name}" in boilerplate
+        assert f"method='{method_name}'" in boilerplate
+
+    def test_identifiers_are_randomized(self):
+        """Each call must produce a different method name."""
+        _, method_a = Exploit._nonblocking_boilerplate()
+        _, method_b = Exploit._nonblocking_boilerplate()
+        assert method_a != method_b
+
+
 class TestBuildFlowPayload:
     def test_non_blocking_appends_boilerplate(self):
         exploit = Exploit()
@@ -65,7 +98,6 @@ class TestBuildFlowPayload:
             "value"
         ]
         assert "x = 1" in code_val
-        assert "CVE-2026-19295-Probe" in code_val
 
     def test_blocking_uses_blocking_boilerplate(self):
         exploit = Exploit()
@@ -82,6 +114,30 @@ class TestBuildFlowPayload:
         assert "description" in result
         assert "data" in result
         assert "nodes" in result["data"]
+
+    def test_method_name_matches_manifest(self):
+        """The method_name from the boilerplate must appear in the outputs manifest."""
+        exploit = Exploit()
+        result = exploit._build_flow_payload("x = 1", blocking=False)
+        output_method = result["data"]["nodes"][0]["data"]["node"]["outputs"][0][
+            "method"
+        ]
+        code_val = result["data"]["nodes"][0]["data"]["node"]["template"]["code"][
+            "value"
+        ]
+        assert f"def {output_method}" in code_val
+
+    def test_blocking_method_name_matches_manifest(self):
+        """Blocking path: method_name from the boilerplate must appear in the manifest."""
+        exploit = Exploit()
+        result = exploit._build_flow_payload("x = 1", blocking=True)
+        output_method = result["data"]["nodes"][0]["data"]["node"]["outputs"][0][
+            "method"
+        ]
+        code_val = result["data"]["nodes"][0]["data"]["node"]["template"]["code"][
+            "value"
+        ]
+        assert f"def {output_method}" in code_val
 
 
 # ---------------------------------------------------------------------------
@@ -389,6 +445,45 @@ class TestTriggerVuln:
                 is None
             )
 
+    def test_blocking_network_error_returns_none(self):
+        """A network error on a blocking trigger returns None (build never fired)."""
+        exploit = Exploit()
+        with patch(
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.post",
+            side_effect=ConnectionError("refused"),
+        ):
+            assert (
+                exploit.trigger_vuln(
+                    base_url=_BASE_URL,
+                    auth=_AUTH_HEADERS,
+                    flow_id="flow-1",
+                    blocking=True,
+                )
+                is None
+            )
+
+    def test_blocking_returns_sentinel_without_polling_sse(self):
+        """blocking=True must return 'shell dispatched' immediately after the 200
+        and must never open the SSE stream — doing so cancels the build."""
+        exploit = Exploit()
+        with (
+            patch(
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.post",
+                return_value=_mock_resp(200, {"job_id": "j"}),
+            ),
+            patch(
+                "flowhound.vulnerabilities.exploits.langflow.cve_2026_19295.get",
+            ) as mock_get,
+        ):
+            result = exploit.trigger_vuln(
+                base_url=_BASE_URL,
+                auth=_AUTH_HEADERS,
+                flow_id="flow-1",
+                blocking=True,
+            )
+        assert result == "shell dispatched"
+        mock_get.assert_not_called()
+
 
 # ---------------------------------------------------------------------------
 # delete_flow
@@ -526,3 +621,60 @@ class TestExploit:
                 exploit.exploit(base_url=_BASE_URL, username="admin", password="secret")
                 is True
             )
+
+    def test_non_blocking_calls_delete_flow(self):
+        """exploit() must call delete_flow for non-blocking payloads."""
+        payload = MagicMock()
+        payload.load_payload.return_value = "x = 1"
+        payload.blocking = False
+        exploit = Exploit()
+        with (
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.get",
+                return_value=_mock_auto_login_disabled(),
+            ),
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.post",
+                return_value=_mock_auth_post(),
+            ),
+            patch.object(exploit, "save_flow", return_value="flow-1"),
+            patch.object(exploit, "trigger_vuln", return_value="uid=0"),
+            patch.object(exploit, "delete_flow") as mock_delete,
+        ):
+            result = exploit.exploit(
+                base_url=_BASE_URL,
+                username="admin",
+                password="secret",
+                payload=payload,
+            )
+        assert result is True
+        mock_delete.assert_called_once()
+
+    def test_blocking_skips_delete_flow(self):
+        """exploit() must NOT call delete_flow for blocking payloads — deleting
+        the flow while the build is in-flight cancels it before the shell runs."""
+        payload = MagicMock()
+        payload.load_payload.return_value = "x = 1"
+        payload.blocking = True
+        exploit = Exploit()
+        with (
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.get",
+                return_value=_mock_auto_login_disabled(),
+            ),
+            patch(
+                "flowhound.vulnerabilities.clients.langflow.post",
+                return_value=_mock_auth_post(),
+            ),
+            patch.object(exploit, "save_flow", return_value="flow-1"),
+            patch.object(exploit, "trigger_vuln", return_value="shell dispatched"),
+            patch.object(exploit, "delete_flow") as mock_delete,
+        ):
+            result = exploit.exploit(
+                base_url=_BASE_URL,
+                username="admin",
+                password="secret",
+                payload=payload,
+            )
+        assert result is True
+        mock_delete.assert_not_called()

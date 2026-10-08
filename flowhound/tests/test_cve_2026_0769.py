@@ -39,16 +39,17 @@ class TestBlockingBoilerplate:
 
     def test_contains_component_class(self):
         result = Exploit._blocking_boilerplate("x = 1")
-        assert "PwnComponent" in result
-        assert "CVE-2026-0769-Probe" in result
+        assert "(Component):" in result
+        assert "from langflow.custom import Component" in result
 
-    def test_contains_run_method(self):
-        result = Exploit._blocking_boilerplate("x = 1")
-        assert "def run(self)" in result
+    def test_contains_custom_method(self):
+        result = Exploit._blocking_boilerplate("x = 1", method_name="custom_exec")
+        assert "def custom_exec(self)" in result
+        assert "method='custom_exec'" in result
 
     def test_empty_code_produces_valid_class(self):
         result = Exploit._blocking_boilerplate("")
-        assert "PwnComponent" in result
+        assert "(Component):" in result
         assert "payload executed" in result
 
     def test_multiline_all_lines_indented(self):
@@ -80,16 +81,16 @@ def test_blocking_boilerplate_never_raises_for_arbitrary_code(code):
 @settings(max_examples=300)
 def test_blocking_boilerplate_always_contains_component_class(code):
     """The component class skeleton must always be present regardless of input."""
-    result = Exploit._blocking_boilerplate(code)
-    assert "class PwnComponent" in result
+    result = Exploit._blocking_boilerplate(code, method_name="run")
+    assert "(Component):" in result
     assert "def run(self)" in result
 
 
 @given(st.text(alphabet=st.characters(blacklist_categories=("Cs",)), min_size=1))
 @settings(max_examples=300)
 def test_blocking_boilerplate_every_line_indented(code):
-    """Every line of the injected code must be indented by exactly 8 spaces inside run()."""
-    result = Exploit._blocking_boilerplate(code)
+    """Every line of the injected code must be indented by exactly 8 spaces inside method."""
+    result = Exploit._blocking_boilerplate(code, method_name="run")
     # Collect lines between 'def run' and the final return statement
     lines = result.splitlines()
     run_idx = next(i for i, ln in enumerate(lines) if "def run(self)" in ln)
@@ -134,7 +135,7 @@ class TestTriggerVuln:
             exploit.trigger_vuln(base_url=_BASE_URL, auth=_AUTH_HEADERS, code="x = 1")
         body_code = mock_post.call_args.kwargs["json"]["code"]
         assert "x = 1" in body_code
-        assert "PwnComponent" in body_code
+        assert "from langflow.custom import Component" in body_code
 
     def test_sends_content_type_header(self):
         exploit = Exploit()

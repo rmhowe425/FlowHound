@@ -48,10 +48,35 @@ def _mock_auto_login_disabled():
 class TestBlockingBoilerplate:
     def test_indents_code(self):
         code = "import os\nos.system('id')"
-        result = Exploit._blocking_boilerplate(code)
-        assert "        import os" in result
-        assert "        os.system('id')" in result
-        assert "ExploitComp" in result
+        component_code, _ = Exploit._blocking_boilerplate(code)
+        assert "        import os" in component_code
+        assert "        os.system('id')" in component_code
+
+    def test_returns_matching_method_name(self):
+        """The method name in the source must match the returned method_name."""
+        component_code, method_name = Exploit._blocking_boilerplate("pass")
+        assert f"def {method_name}" in component_code
+        assert f'method="{method_name}"' in component_code
+
+    def test_identifiers_are_randomized(self):
+        """Each call must produce a different method name."""
+        _, method_a = Exploit._blocking_boilerplate("pass")
+        _, method_b = Exploit._blocking_boilerplate("pass")
+        assert method_a != method_b
+
+
+class TestNonblockingBoilerplate:
+    def test_returns_matching_method_name(self):
+        """The method name in the source must match the returned method_name."""
+        boilerplate, method_name = Exploit._nonblocking_boilerplate()
+        assert f"def {method_name}" in boilerplate
+        assert f'method="{method_name}"' in boilerplate
+
+    def test_identifiers_are_randomized(self):
+        """Each call must produce a different method name."""
+        _, method_a = Exploit._nonblocking_boilerplate()
+        _, method_b = Exploit._nonblocking_boilerplate()
+        assert method_a != method_b
 
 
 # ---------------------------------------------------------------------------

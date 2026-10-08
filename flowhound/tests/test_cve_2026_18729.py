@@ -66,13 +66,25 @@ class TestParseResponse:
 
 class TestBlockingBoilerplate:
     def test_indents_code(self):
-        result = Exploit._blocking_boilerplate("x = 1\ny = 2")
-        assert "        x = 1" in result
-        assert "        y = 2" in result
-        assert "CVE-2026-18729-Probe" in result
+        component_code, _ = Exploit._blocking_boilerplate("x = 1\ny = 2")
+        assert "        x = 1" in component_code
+        assert "        y = 2" in component_code
 
     def test_single_line(self):
-        assert "        x = 1" in Exploit._blocking_boilerplate("x = 1")
+        component_code, _ = Exploit._blocking_boilerplate("x = 1")
+        assert "        x = 1" in component_code
+
+    def test_returns_matching_method_name(self):
+        """The method name in the source code must match the returned method_name."""
+        component_code, method_name = Exploit._blocking_boilerplate("pass")
+        assert f"def {method_name}" in component_code
+        assert f"method='{method_name}'" in component_code
+
+    def test_identifiers_are_randomized(self):
+        """Each call must produce a different method name."""
+        _, method_a = Exploit._blocking_boilerplate("pass")
+        _, method_b = Exploit._blocking_boilerplate("pass")
+        assert method_a != method_b
 
 
 # ---------------------------------------------------------------------------
@@ -94,17 +106,6 @@ class TestTriggerVuln:
                 )
                 is mock_resp
             )
-
-    def test_blocking_uses_blocking_boilerplate(self):
-        exploit = Exploit()
-        with patch(
-            "flowhound.vulnerabilities.exploits.langflow.cve_2026_18729.post",
-            return_value=_mock_resp(200),
-        ) as mock_post:
-            exploit.trigger_vuln(
-                base_url=_BASE_URL, auth=_AUTH_HEADERS, code="x = 1", blocking=True
-            )
-        assert "        x = 1" in mock_post.call_args.kwargs["json"]["code"]
 
     def test_network_error_returns_none(self):
         exploit = Exploit()
@@ -251,7 +252,10 @@ class TestUploadFlow:
         ):
             assert (
                 exploit._upload_flow(
-                    base_url=_BASE_URL, auth=_AUTH_HEADERS, component_code="x = 1"
+                    base_url=_BASE_URL,
+                    auth=_AUTH_HEADERS,
+                    component_code="x = 1",
+                    method_name="run",
                 )
                 == "flow-abc"
             )
@@ -264,7 +268,10 @@ class TestUploadFlow:
         ):
             assert (
                 exploit._upload_flow(
-                    base_url=_BASE_URL, auth=_AUTH_HEADERS, component_code="x = 1"
+                    base_url=_BASE_URL,
+                    auth=_AUTH_HEADERS,
+                    component_code="x = 1",
+                    method_name="run",
                 )
                 == "flow-xyz"
             )
@@ -277,7 +284,10 @@ class TestUploadFlow:
         ):
             assert (
                 exploit._upload_flow(
-                    base_url=_BASE_URL, auth=_AUTH_HEADERS, component_code="x = 1"
+                    base_url=_BASE_URL,
+                    auth=_AUTH_HEADERS,
+                    component_code="x = 1",
+                    method_name="run",
                 )
                 is None
             )
@@ -290,7 +300,10 @@ class TestUploadFlow:
         ):
             assert (
                 exploit._upload_flow(
-                    base_url=_BASE_URL, auth=_AUTH_HEADERS, component_code="x = 1"
+                    base_url=_BASE_URL,
+                    auth=_AUTH_HEADERS,
+                    component_code="x = 1",
+                    method_name="run",
                 )
                 is None
             )
@@ -303,13 +316,35 @@ class TestUploadFlow:
             return_value=_mock_resp(201, {"id": "flow-1"}),
         ) as mock_post:
             exploit._upload_flow(
-                base_url=_BASE_URL, auth=_AUTH_HEADERS, component_code="SENTINEL_CODE"
+                base_url=_BASE_URL,
+                auth=_AUTH_HEADERS,
+                component_code="SENTINEL_CODE",
+                method_name="run",
             )
         sent_json = mock_post.call_args.kwargs["json"]
         code_value = sent_json["data"]["nodes"][0]["data"]["node"]["template"]["code"][
             "value"
         ]
         assert "SENTINEL_CODE" in code_value
+
+    def test_method_name_appears_in_flow_manifest(self):
+        """The method_name passed to _upload_flow must appear in the outputs manifest."""
+        exploit = Exploit()
+        with patch(
+            "flowhound.vulnerabilities.exploits.langflow.cve_2026_18729.post",
+            return_value=_mock_resp(201, {"id": "flow-1"}),
+        ) as mock_post:
+            exploit._upload_flow(
+                base_url=_BASE_URL,
+                auth=_AUTH_HEADERS,
+                component_code="x = 1",
+                method_name="my_sentinel_method",
+            )
+        sent_json = mock_post.call_args.kwargs["json"]
+        output_method = sent_json["data"]["nodes"][0]["data"]["node"]["outputs"][0][
+            "method"
+        ]
+        assert output_method == "my_sentinel_method"
 
 
 # ---------------------------------------------------------------------------
